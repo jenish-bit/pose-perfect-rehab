@@ -5,35 +5,35 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
-import { ArrowDown, ArrowUp, Balance, Core, Legs, Arms } from "lucide-react";
+import { ArrowDown, ArrowUp, Activity, Heart, Users, Target } from "lucide-react";
 
 const Index = () => {
   const [currentSection, setCurrentSection] = useState('hero');
 
   const exerciseCategories = [
     {
-      icon: Arms,
+      icon: Users,
       title: "Arm & Shoulder",
       count: 24,
       description: "Improve range of motion and strength",
       color: "bg-blue-100 text-blue-700"
     },
     {
-      icon: Legs,
+      icon: Activity,
       title: "Leg & Mobility",
       count: 18,
       description: "Walking, balance, and lower body strength",
       color: "bg-green-100 text-green-700"
     },
     {
-      icon: Balance,
+      icon: Target,
       title: "Balance & Coordination",
       count: 16,
       description: "Fall prevention and stability training",
       color: "bg-purple-100 text-purple-700"
     },
     {
-      icon: Core,
+      icon: Heart,
       title: "Core & Posture",
       count: 12,
       description: "Core strength and postural control",
