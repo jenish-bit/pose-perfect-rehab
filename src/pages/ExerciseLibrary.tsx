@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -7,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { supabase } from '@/integrations/supabase/client';
 import { Play, Clock, Target } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 interface Exercise {
   id: string;
@@ -23,6 +23,7 @@ interface Exercise {
 }
 
 const ExerciseLibrary = () => {
+  const navigate = useNavigate();
   const [exercises, setExercises] = useState<Exercise[]>([]);
   const [filteredExercises, setFilteredExercises] = useState<Exercise[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
@@ -92,6 +93,10 @@ const ExerciseLibrary = () => {
       case 'advanced': return 'bg-red-100 text-red-800';
       default: return 'bg-gray-100 text-gray-800';
     }
+  };
+
+  const startExercise = (exerciseId: string) => {
+    navigate(`/exercise-session?exerciseId=${exerciseId}`);
   };
 
   if (loading) {
@@ -174,9 +179,13 @@ const ExerciseLibrary = () => {
                   className="w-full h-48 object-cover rounded-t-lg"
                 />
                 <div className="absolute inset-0 bg-black bg-opacity-40 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity rounded-t-lg">
-                  <Button size="sm" className="bg-white text-black hover:bg-gray-100">
+                  <Button 
+                    size="sm" 
+                    className="bg-white text-black hover:bg-gray-100"
+                    onClick={() => startExercise(exercise.id)}
+                  >
                     <Play className="h-4 w-4 mr-2" />
-                    Watch Demo
+                    Start Exercise
                   </Button>
                 </div>
               </div>
@@ -220,8 +229,11 @@ const ExerciseLibrary = () => {
                   </ul>
                 </div>
                 
-                <Button className="w-full">
-                  Start Exercise
+                <Button 
+                  className="w-full"
+                  onClick={() => startExercise(exercise.id)}
+                >
+                  Start with AI Coach
                 </Button>
               </CardContent>
             </Card>
