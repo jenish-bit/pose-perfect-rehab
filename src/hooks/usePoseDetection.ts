@@ -29,6 +29,7 @@ export const usePoseDetection = (
   const [isInitialized, setIsInitialized] = useState(false);
   const poseRef = useRef<Pose | null>(null);
   const animationRef = useRef<number | null>(null);
+  const lastRepTime = useRef<number>(0);
 
   useEffect(() => {
     if (!videoRef.current || !canvasRef.current) return;
@@ -75,7 +76,11 @@ export const usePoseDetection = (
         // Start the pose detection loop
         const detect = async () => {
           if (videoRef.current && poseRef.current && videoRef.current.readyState >= 2) {
-            await poseRef.current.send({ image: videoRef.current });
+            try {
+              await poseRef.current.send({ image: videoRef.current });
+            } catch (error) {
+              console.error('Pose detection error:', error);
+            }
           }
           animationRef.current = requestAnimationFrame(detect);
         };
@@ -113,7 +118,7 @@ export const usePoseDetection = (
       const y = landmark.y * ctx.canvas.height;
       
       ctx.beginPath();
-      ctx.arc(x, y, 5, 0, 2 * Math.PI);
+      ctx.arc(x, y, 4, 0, 2 * Math.PI);
       ctx.fillStyle = '#00ff00';
       ctx.fill();
     });
@@ -167,56 +172,68 @@ export const usePoseDetection = (
       feedback: ''
     };
 
-    switch (exerciseType) {
-      case 'Shoulder Flexion':
+    // Check landmark visibility
+    const visibility = [leftShoulder, rightShoulder, leftElbow, rightElbow, leftWrist, rightWrist]
+      .reduce((sum, landmark) => sum + (landmark?.visibility || 0), 0) / 6;
+
+    if (visibility < 0.7) {
+      analysis.feedback = 'Please move closer to the camera';
+      analysis.confidence = visibility;
+      return analysis;
+    }
+
+    switch (exerciseType.toLowerCase()) {
+      case 'shoulder flexion':
         analysis = analyzeShoulderFlexion(leftShoulder, rightShoulder, leftElbow, rightElbow, leftWrist, rightWrist);
         break;
-      case 'Arm Circles':
+      case 'arm circles':
         analysis = analyzeArmCircles(leftShoulder, rightShoulder, leftWrist, rightWrist);
         break;
-      case 'Bicep Curls':
+      case 'bicep curls':
         analysis = analyzeBicepCurls(leftShoulder, rightShoulder, leftElbow, rightElbow, leftWrist, rightWrist);
         break;
-      case 'Weight Shifts':
+      case 'weight shifts':
         analysis = analyzeWeightShifts(landmarks[23], landmarks[24]); // hips
+        break;
+      case 'ankle pumps':
+        analysis = analyzeAnklePumps(landmarks[27], landmarks[28]); // ankles
+        break;
+      case 'seated marching':
+        analysis = analyzeSeatedMarching(landmarks[25], landmarks[26]); // knees
         break;
       default:
         analysis.feedback = 'Exercise analysis in progress...';
     }
 
     analysis.landmarks = landmarks;
+    analysis.confidence = Math.min(analysis.confidence, visibility);
+    
     return analysis;
   };
 
   const analyzeShoulderFlexion = (leftShoulder: any, rightShoulder: any, leftElbow: any, rightElbow: any, leftWrist: any, rightWrist: any): PoseData => {
-    // Calculate arm angle (using right arm for simplicity)
-    const shoulderToElbow = {
-      x: rightElbow.x - rightShoulder.x,
-      y: rightElbow.y - rightShoulder.y
-    };
-    
-    const elbowToWrist = {
-      x: rightWrist.x - rightElbow.x,
-      y: rightWrist.y - rightElbow.y
+    // Use right arm for analysis
+    const shoulderToWrist = {
+      x: rightWrist.x - rightShoulder.x,
+      y: rightWrist.y - rightShoulder.y
     };
 
-    // Calculate angle between shoulder-elbow and elbow-wrist vectors
-    const armAngle = Math.atan2(elbowToWrist.y, elbowToWrist.x) - Math.atan2(shoulderToElbow.y, shoulderToElbow.x);
-    const armAngleDegrees = Math.abs(armAngle * 180 / Math.PI);
-
-    // Check if arm is raised to shoulder height
-    const isArmRaised = rightWrist.y < rightShoulder.y;
+    // Calculate arm elevation angle
+    const angle = Math.atan2(-shoulderToWrist.y, shoulderToWrist.x) * 180 / Math.PI;
     const armHeight = rightShoulder.y - rightWrist.y;
 
     let feedback = '';
     let isCorrectForm = false;
 
-    if (armHeight > 0.1) {
-      feedback = 'Excellent! Arm raised to shoulder height';
+    if (armHeight > 0.15 && Math.abs(angle) < 30) {
+      feedback = 'Excellent! Perfect shoulder flexion';
       isCorrectForm = true;
-    } else if (armHeight > 0.05) {
+    } else if (armHeight > 0.1) {
       feedback = 'Good! Try to raise your arm a bit higher';
-      isCorrectForm = true;
+      isCorrectForm = false;
+    } else if (armHeight > 0.05) {
+      feedback = 'Keep raising your arm forward';
+      isCorrectForm = false;
     } else {
       feedback = 'Raise your arm forward to shoulder height';
       isCorrectForm = false;
@@ -225,7 +242,7 @@ export const usePoseDetection = (
     return {
       landmarks: [],
       worldLandmarks: [],
-      armAngle: armAngleDegrees,
+      armAngle: Math.abs(angle),
       shoulderPosition: armHeight * 100,
       confidence: 0.9,
       isCorrectForm,
@@ -235,8 +252,8 @@ export const usePoseDetection = (
 
   const analyzeArmCircles = (leftShoulder: any, rightShoulder: any, leftWrist: any, rightWrist: any): PoseData => {
     // Check if arms are extended to sides
-    const leftArmExtended = Math.abs(leftWrist.x - leftShoulder.x) > 0.15;
-    const rightArmExtended = Math.abs(rightWrist.x - rightShoulder.x) > 0.15;
+    const leftArmExtended = Math.abs(leftWrist.x - leftShoulder.x) > 0.2;
+    const rightArmExtended = Math.abs(rightWrist.x - rightShoulder.x) > 0.2;
     
     let feedback = '';
     let isCorrectForm = false;
@@ -244,6 +261,9 @@ export const usePoseDetection = (
     if (leftArmExtended && rightArmExtended) {
       feedback = 'Perfect! Arms extended, make circular motions';
       isCorrectForm = true;
+    } else if (leftArmExtended || rightArmExtended) {
+      feedback = 'Good! Extend both arms out to your sides';
+      isCorrectForm = false;
     } else {
       feedback = 'Extend your arms out to your sides';
       isCorrectForm = false;
@@ -261,7 +281,7 @@ export const usePoseDetection = (
   };
 
   const analyzeBicepCurls = (leftShoulder: any, rightShoulder: any, leftElbow: any, rightElbow: any, leftWrist: any, rightWrist: any): PoseData => {
-    // Calculate elbow angle for bicep curl
+    // Calculate elbow angle for bicep curl (using right arm)
     const upperArm = {
       x: rightElbow.x - rightShoulder.x,
       y: rightElbow.y - rightShoulder.y
@@ -276,7 +296,7 @@ export const usePoseDetection = (
     const upperArmMag = Math.sqrt(upperArm.x * upperArm.x + upperArm.y * upperArm.y);
     const forearmMag = Math.sqrt(forearm.x * forearm.x + forearm.y * forearm.y);
     
-    const angle = Math.acos(dotProduct / (upperArmMag * forearmMag)) * 180 / Math.PI;
+    const angle = Math.acos(Math.max(-1, Math.min(1, dotProduct / (upperArmMag * forearmMag)))) * 180 / Math.PI;
 
     let feedback = '';
     let isCorrectForm = false;
@@ -286,7 +306,7 @@ export const usePoseDetection = (
       isCorrectForm = true;
     } else if (angle < 120) {
       feedback = 'Good form, continue the curl';
-      isCorrectForm = true;
+      isCorrectForm = false;
     } else {
       feedback = 'Start curling the weight toward your shoulder';
       isCorrectForm = false;
@@ -312,10 +332,13 @@ export const usePoseDetection = (
 
     if (hipBalance < 0.02) {
       feedback = 'Good balance! Try shifting weight to one side';
-      isCorrectForm = true;
-    } else {
+      isCorrectForm = false;
+    } else if (hipBalance > 0.03) {
       feedback = 'Good weight shift! Hold and return to center';
       isCorrectForm = true;
+    } else {
+      feedback = 'Shift your weight more to one side';
+      isCorrectForm = false;
     }
 
     return {
@@ -324,6 +347,59 @@ export const usePoseDetection = (
       armAngle: 0,
       shoulderPosition: hipBalance * 100,
       confidence: 0.85,
+      isCorrectForm,
+      feedback
+    };
+  };
+
+  const analyzeAnklePumps = (leftAnkle: any, rightAnkle: any): PoseData => {
+    // Simple ankle movement detection
+    const ankleMovement = Math.abs(leftAnkle.y - rightAnkle.y);
+    
+    let feedback = '';
+    let isCorrectForm = false;
+
+    if (ankleMovement > 0.02) {
+      feedback = 'Great ankle movement! Keep pumping';
+      isCorrectForm = true;
+    } else {
+      feedback = 'Move your feet up and down';
+      isCorrectForm = false;
+    }
+
+    return {
+      landmarks: [],
+      worldLandmarks: [],
+      armAngle: 0,
+      shoulderPosition: ankleMovement * 100,
+      confidence: 0.8,
+      isCorrectForm,
+      feedback
+    };
+  };
+
+  const analyzeSeatedMarching = (leftKnee: any, rightKnee: any): PoseData => {
+    // Detect knee lifting movement
+    const kneeHeight = Math.max(leftKnee.y, rightKnee.y);
+    const baselineKneeHeight = 0.6; // Approximate seated knee height
+    
+    let feedback = '';
+    let isCorrectForm = false;
+
+    if (kneeHeight < baselineKneeHeight - 0.05) {
+      feedback = 'Perfect! Keep marching in place';
+      isCorrectForm = true;
+    } else {
+      feedback = 'Lift your knees up as if marching';
+      isCorrectForm = false;
+    }
+
+    return {
+      landmarks: [],
+      worldLandmarks: [],
+      armAngle: 0,
+      shoulderPosition: (baselineKneeHeight - kneeHeight) * 100,
+      confidence: 0.8,
       isCorrectForm,
       feedback
     };
