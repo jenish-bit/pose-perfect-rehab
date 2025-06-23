@@ -7,7 +7,7 @@ import { WebcamPoseDetection } from './WebcamPoseDetection';
 import { ExerciseVideoPlayer } from './ExerciseVideoPlayer';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './auth/AuthProvider';
-import { Play, Pause, RotateCcw, CheckCircle } from 'lucide-react';
+import { Play, Pause, RotateCcw, CheckCircle, BookOpen } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 interface Exercise {
@@ -71,11 +71,12 @@ export const ExerciseSession: React.FC<ExerciseSessionProps> = ({ exerciseId, on
 
       if (error) throw error;
       setExercise(data);
+      console.log('Loaded exercise:', data.title);
     } catch (error) {
       console.error('Error fetching exercise:', error);
       toast({
         title: "Error",
-        description: "Failed to load exercise details.",
+        description: "Failed to load exercise details. Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -96,7 +97,7 @@ export const ExerciseSession: React.FC<ExerciseSessionProps> = ({ exerciseId, on
     
     toast({
       title: "Exercise Session Started",
-      description: "AI coach is now monitoring your form!",
+      description: "AI coach is now monitoring your form! Position yourself in front of the camera.",
     });
   };
 
@@ -109,6 +110,7 @@ export const ExerciseSession: React.FC<ExerciseSessionProps> = ({ exerciseId, on
   };
 
   const handleRepCompleted = (repData: { accuracy: number; feedback: string }) => {
+    console.log('Rep completed:', repData);
     setSessionData(prev => ({
       ...prev,
       repsCompleted: prev.repsCompleted + 1,
@@ -116,9 +118,14 @@ export const ExerciseSession: React.FC<ExerciseSessionProps> = ({ exerciseId, on
       feedbackHistory: [...prev.feedbackHistory, repData.feedback]
     }));
 
+    toast({
+      title: "Rep Completed!",
+      description: `Great job! Accuracy: ${Math.round(repData.accuracy * 100)}%`,
+    });
+
     // Check if target reps reached
     if (exercise && sessionData.repsCompleted + 1 >= exercise.target_reps) {
-      completeSession();
+      setTimeout(() => completeSession(), 1000);
     }
   };
 
@@ -146,8 +153,8 @@ export const ExerciseSession: React.FC<ExerciseSessionProps> = ({ exerciseId, on
       if (error) throw error;
 
       toast({
-        title: "Session Complete!",
-        description: `Great job! You completed ${sessionData.repsCompleted} reps with ${Math.round(avgAccuracy * 100)}% accuracy.`,
+        title: "Session Complete! 🎉",
+        description: `Excellent work! You completed ${sessionData.repsCompleted} reps with ${Math.round(avgAccuracy * 100)}% accuracy.`,
       });
 
       if (onComplete) onComplete();
@@ -155,7 +162,7 @@ export const ExerciseSession: React.FC<ExerciseSessionProps> = ({ exerciseId, on
       console.error('Error saving session:', error);
       toast({
         title: "Error",
-        description: "Failed to save your session data.",
+        description: "Failed to save your session data, but great job on the workout!",
         variant: "destructive",
       });
     }
@@ -171,6 +178,11 @@ export const ExerciseSession: React.FC<ExerciseSessionProps> = ({ exerciseId, on
       duration: 0
     });
     setShowDemo(true);
+    
+    toast({
+      title: "Session Reset",
+      description: "Ready to start fresh!",
+    });
   };
 
   if (loading) {
@@ -178,7 +190,7 @@ export const ExerciseSession: React.FC<ExerciseSessionProps> = ({ exerciseId, on
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading exercise...</p>
+          <p className="text-gray-600">Loading your exercise...</p>
         </div>
       </div>
     );
@@ -260,15 +272,15 @@ export const ExerciseSession: React.FC<ExerciseSessionProps> = ({ exerciseId, on
         {/* Session Controls */}
         <Card>
           <CardContent className="pt-6">
-            <div className="flex justify-center gap-4">
+            <div className="flex justify-center gap-4 flex-wrap">
               {!isSessionActive ? (
                 <Button 
                   onClick={startSession} 
                   size="lg"
-                  className="px-8"
+                  className="px-8 bg-green-600 hover:bg-green-700"
                 >
                   <Play className="h-5 w-5 mr-2" />
-                  {sessionData.repsCompleted > 0 ? 'Resume Session' : 'Start Exercise'}
+                  {sessionData.repsCompleted > 0 ? 'Resume Session' : 'Start AI Exercise'}
                 </Button>
               ) : (
                 <Button 
@@ -289,6 +301,15 @@ export const ExerciseSession: React.FC<ExerciseSessionProps> = ({ exerciseId, on
               >
                 <RotateCcw className="h-5 w-5 mr-2" />
                 Reset
+              </Button>
+
+              <Button 
+                onClick={() => setShowDemo(!showDemo)} 
+                variant="outline" 
+                size="lg"
+              >
+                <BookOpen className="h-5 w-5 mr-2" />
+                {showDemo ? 'Hide Tutorial' : 'Show Tutorial'}
               </Button>
 
               {sessionData.repsCompleted >= exercise.target_reps && (
@@ -317,19 +338,17 @@ export const ExerciseSession: React.FC<ExerciseSessionProps> = ({ exerciseId, on
           )}
           
           {/* AI Webcam Analysis */}
-          {(!showDemo || isSessionActive) && (
-            <WebcamPoseDetection
-              exerciseTitle={exercise.title}
-              onRepCompleted={handleRepCompleted}
-              isActive={isSessionActive}
-            />
-          )}
+          <WebcamPoseDetection
+            exerciseTitle={exercise.title}
+            onRepCompleted={handleRepCompleted}
+            isActive={isSessionActive}
+          />
         </div>
 
         {/* Exercise Instructions */}
         <Card>
           <CardHeader>
-            <CardTitle>Instructions</CardTitle>
+            <CardTitle>Step-by-Step Instructions</CardTitle>
           </CardHeader>
           <CardContent>
             <ol className="space-y-3">
