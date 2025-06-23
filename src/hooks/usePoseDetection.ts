@@ -1,7 +1,5 @@
-
 import { useEffect, useRef, useState } from 'react';
 import { Pose } from '@mediapipe/pose';
-import { Camera } from '@mediapipe/camera_utils';
 
 interface PoseData {
   landmarks: any[];
@@ -29,7 +27,7 @@ export const usePoseDetection = (
   });
   const [isInitialized, setIsInitialized] = useState(false);
   const poseRef = useRef<Pose | null>(null);
-  const cameraRef = useRef<Camera | null>(null);
+  const animationRef = useRef<number | null>(null);
 
   useEffect(() => {
     if (!videoRef.current || !canvasRef.current) return;
@@ -54,7 +52,7 @@ export const usePoseDetection = (
         pose.onResults((results) => {
           if (canvasRef.current && results.poseLandmarks) {
             const canvasCtx = canvasRef.current.getContext('2d');
-            if (canvasCtx) {
+            if (canvasCtx && videoRef.current) {
               canvasCtx.save();
               canvasCtx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
               
@@ -70,22 +68,19 @@ export const usePoseDetection = (
           }
         });
 
-        if (videoRef.current) {
-          const camera = new Camera(videoRef.current, {
-            onFrame: async () => {
-              if (videoRef.current) {
-                await pose.send({ image: videoRef.current });
-              }
-            },
-            width: 640,
-            height: 480
-          });
+        poseRef.current = pose;
+        setIsInitialized(true);
+        
+        // Start the pose detection loop
+        const detect = async () => {
+          if (videoRef.current && poseRef.current && videoRef.current.readyState >= 2) {
+            await poseRef.current.send({ image: videoRef.current });
+          }
+          animationRef.current = requestAnimationFrame(detect);
+        };
+        
+        detect();
 
-          await camera.start();
-          poseRef.current = pose;
-          cameraRef.current = camera;
-          setIsInitialized(true);
-        }
       } catch (error) {
         console.error('Error initializing pose detection:', error);
       }
@@ -94,8 +89,8 @@ export const usePoseDetection = (
     initializePose();
 
     return () => {
-      if (cameraRef.current) {
-        cameraRef.current.stop();
+      if (animationRef.current) {
+        cancelAnimationFrame(animationRef.current);
       }
     };
   }, [videoRef, canvasRef, exerciseType]);
