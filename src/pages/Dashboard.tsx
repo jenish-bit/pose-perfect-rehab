@@ -6,7 +6,8 @@ import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/components/auth/AuthProvider';
 import { supabase } from '@/integrations/supabase/client';
-import { Activity, Calendar, Target, TrendingUp } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Activity, Calendar, Target, TrendingUp, Play, Dumbbell, Camera } from 'lucide-react';
 
 interface Exercise {
   id: string;
@@ -25,6 +26,7 @@ interface ExerciseSession {
 
 const Dashboard = () => {
   const { user, signOut } = useAuth();
+  const navigate = useNavigate();
   const [recentSessions, setRecentSessions] = useState<ExerciseSession[]>([]);
   const [weeklyProgress, setWeeklyProgress] = useState(0);
   const [totalSessions, setTotalSessions] = useState(0);
@@ -89,17 +91,22 @@ const Dashboard = () => {
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
-      <header className="bg-white border-b">
+      <header className="bg-white border-b shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
-            <div className="flex items-center space-x-2">
-              <div className="w-8 h-8 bg-gradient-to-br from-blue-600 to-green-600 rounded-lg flex items-center justify-center">
-                <span className="text-white font-bold text-sm">SR</span>
+            <div className="flex items-center space-x-3">
+              <div className="w-10 h-10 bg-gradient-to-br from-blue-600 to-green-600 rounded-lg flex items-center justify-center">
+                <span className="text-white font-bold text-lg">SR</span>
               </div>
-              <span className="text-xl font-bold text-gray-900">StrokeRehabPro</span>
+              <div>
+                <h1 className="text-xl font-bold text-gray-900">StrokeRehabPro</h1>
+                <p className="text-sm text-gray-500">AI-Powered Recovery Platform</p>
+              </div>
             </div>
             <div className="flex items-center space-x-4">
-              <span className="text-sm text-gray-600">Welcome, {user?.user_metadata?.first_name}</span>
+              <span className="text-sm text-gray-600">
+                Welcome, {user?.user_metadata?.first_name || user?.email?.split('@')[0]}
+              </span>
               <Button variant="outline" onClick={signOut}>
                 Sign Out
               </Button>
@@ -108,11 +115,51 @@ const Dashboard = () => {
         </div>
       </header>
 
-      {/* Dashboard Content */}
+      {/* Main Content */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Welcome Section */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Your Recovery Dashboard</h1>
-          <p className="text-gray-600">Track your progress and continue your rehabilitation journey</p>
+          <h2 className="text-3xl font-bold text-gray-900 mb-2">Your Recovery Dashboard</h2>
+          <p className="text-gray-600">Track your progress and continue your rehabilitation journey with AI assistance</p>
+        </div>
+
+        {/* Quick Actions */}
+        <div className="grid md:grid-cols-3 gap-6 mb-8">
+          <Card className="cursor-pointer hover:shadow-lg transition-shadow" onClick={() => navigate('/exercises')}>
+            <CardContent className="flex items-center p-6">
+              <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center mr-4">
+                <Dumbbell className="h-6 w-6 text-blue-600" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-gray-900">Browse Exercises</h3>
+                <p className="text-sm text-gray-600">Explore exercise library</p>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="cursor-pointer hover:shadow-lg transition-shadow" onClick={() => navigate('/exercises')}>
+            <CardContent className="flex items-center p-6">
+              <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center mr-4">
+                <Camera className="h-6 w-6 text-green-600" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-gray-900">AI Coach Session</h3>
+                <p className="text-sm text-gray-600">Start AI-guided exercise</p>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="cursor-pointer hover:shadow-lg transition-shadow">
+            <CardContent className="flex items-center p-6">
+              <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center mr-4">
+                <Target className="h-6 w-6 text-purple-600" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-gray-900">View Progress</h3>
+                <p className="text-sm text-gray-600">Track your improvement</p>
+              </div>
+            </CardContent>
+          </Card>
         </div>
 
         {/* Stats Cards */}
@@ -203,7 +250,13 @@ const Dashboard = () => {
                     </div>
                   ))
                 ) : (
-                  <p className="text-gray-500 text-center py-4">No exercise sessions yet. Start your first workout!</p>
+                  <div className="text-center py-8">
+                    <p className="text-gray-500 mb-4">No exercise sessions yet</p>
+                    <Button onClick={() => navigate('/exercises')}>
+                      <Play className="h-4 w-4 mr-2" />
+                      Start Your First Exercise
+                    </Button>
+                  </div>
                 )}
               </div>
             </CardContent>
@@ -226,12 +279,13 @@ const Dashboard = () => {
                 </div>
                 
                 <div className="bg-blue-50 p-4 rounded-lg">
-                  <h4 className="font-semibold text-blue-900 mb-2">Today's Recommendation</h4>
-                  <p className="text-blue-700 text-sm">
-                    Try some arm strengthening exercises to maintain your progress.
+                  <h4 className="font-semibold text-blue-900 mb-2">Ready to Exercise?</h4>
+                  <p className="text-blue-700 text-sm mb-3">
+                    Start an AI-guided exercise session with real-time feedback and form analysis.
                   </p>
-                  <Button size="sm" className="mt-3">
-                    Start Exercise
+                  <Button size="sm" onClick={() => navigate('/exercises')} className="bg-blue-600 hover:bg-blue-700">
+                    <Camera className="h-4 w-4 mr-2" />
+                    Start AI Session
                   </Button>
                 </div>
               </div>
