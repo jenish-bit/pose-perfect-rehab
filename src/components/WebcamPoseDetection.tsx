@@ -3,8 +3,10 @@ import React, { useRef, useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { usePoseDetection } from '@/hooks/usePoseDetection';
-import { Camera, CameraOff, RotateCcw } from 'lucide-react';
+import { useAdvancedPoseDetection } from '@/hooks/useAdvancedPoseDetection';
+import { useAuth } from '@/components/auth/AuthProvider';
+import { supabase } from '@/integrations/supabase/client';
+import { Camera, CameraOff, RotateCcw, AlertTriangle } from 'lucide-react';
 
 interface WebcamPoseDetectionProps {
   exerciseTitle: string;
@@ -17,6 +19,7 @@ export const WebcamPoseDetection: React.FC<WebcamPoseDetectionProps> = ({
   onRepCompleted,
   isActive
 }) => {
+  const { user } = useAuth();
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [isWebcamActive, setIsWebcamActive] = useState(false);
@@ -24,7 +27,11 @@ export const WebcamPoseDetection: React.FC<WebcamPoseDetectionProps> = ({
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [error, setError] = useState<string>('');
 
-  const { poseData, isInitialized } = usePoseDetection(videoRef, canvasRef, exerciseTitle);
+  const { poseData, isInitialized } = useAdvancedPoseDetection(
+    videoRef, 
+    canvasRef, 
+    exerciseTitle.toLowerCase().replace(/\s+/g, '_')
+  );
 
   useEffect(() => {
     if (isActive && !isWebcamActive) {
@@ -96,6 +103,9 @@ export const WebcamPoseDetection: React.FC<WebcamPoseDetectionProps> = ({
             <Badge variant={isInitialized ? 'default' : 'outline'}>
               {isInitialized ? 'AI Ready' : 'Loading AI...'}
             </Badge>
+            <Badge variant={poseData.exercisePhase === 'execution' ? 'default' : 'secondary'}>
+              {poseData.exercisePhase}
+            </Badge>
           </div>
         </CardTitle>
       </CardHeader>
@@ -133,7 +143,22 @@ export const WebcamPoseDetection: React.FC<WebcamPoseDetectionProps> = ({
                   Accuracy: {Math.round(poseData.confidence * 100)}%
                 </div>
               )}
+              {poseData.movements.fatigueLevel > 5 && (
+                <div className="bg-yellow-500 bg-opacity-75 text-white px-3 py-1 rounded-full text-sm">
+                  Fatigue: {poseData.movements.fatigueLevel}/10
+                </div>
+              )}
             </div>
+
+            {/* Pain Indicators */}
+            {poseData.movements.painIndicators.length > 0 && (
+              <div className="absolute top-4 right-4">
+                <div className="bg-red-500 bg-opacity-75 text-white px-3 py-1 rounded-full text-sm flex items-center gap-2">
+                  <AlertTriangle className="h-4 w-4" />
+                  Pain Detected
+                </div>
+              </div>
+            )}
 
             {/* Feedback Display */}
             {poseData.feedback && (

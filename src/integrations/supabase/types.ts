@@ -9,6 +9,139 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      ai_assessments: {
+        Row: {
+          assessment_type: string
+          confidence_score: number | null
+          created_at: string
+          id: string
+          recommendations: string | null
+          results: Json
+          session_id: string | null
+          user_id: string
+        }
+        Insert: {
+          assessment_type: string
+          confidence_score?: number | null
+          created_at?: string
+          id?: string
+          recommendations?: string | null
+          results?: Json
+          session_id?: string | null
+          user_id: string
+        }
+        Update: {
+          assessment_type?: string
+          confidence_score?: number | null
+          created_at?: string
+          id?: string
+          recommendations?: string | null
+          results?: Json
+          session_id?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_assessments_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "exercise_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      custom_exercises: {
+        Row: {
+          created_at: string
+          description: string | null
+          difficulty_level: number | null
+          duration_seconds: number | null
+          exercise_type: string | null
+          id: string
+          instructions: Json
+          patient_id: string | null
+          target_joints: Json
+          target_reps: number | null
+          therapist_id: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          difficulty_level?: number | null
+          duration_seconds?: number | null
+          exercise_type?: string | null
+          id?: string
+          instructions?: Json
+          patient_id?: string | null
+          target_joints?: Json
+          target_reps?: number | null
+          therapist_id: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          difficulty_level?: number | null
+          duration_seconds?: number | null
+          exercise_type?: string | null
+          id?: string
+          instructions?: Json
+          patient_id?: string | null
+          target_joints?: Json
+          target_reps?: number | null
+          therapist_id?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      exercise_progression: {
+        Row: {
+          created_at: string
+          current_difficulty_level: number | null
+          exercise_id: string
+          id: string
+          last_updated: string
+          progression_rate: number | null
+          target_duration: number | null
+          target_reps: number | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          current_difficulty_level?: number | null
+          exercise_id: string
+          id?: string
+          last_updated?: string
+          progression_rate?: number | null
+          target_duration?: number | null
+          target_reps?: number | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          current_difficulty_level?: number | null
+          exercise_id?: string
+          id?: string
+          last_updated?: string
+          progression_rate?: number | null
+          target_duration?: number | null
+          target_reps?: number | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "exercise_progression_exercise_id_fkey"
+            columns: ["exercise_id"]
+            isOneToOne: false
+            referencedRelation: "exercises"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       exercise_sessions: {
         Row: {
           accuracy_score: number | null
@@ -95,6 +228,100 @@ export type Database = {
         }
         Relationships: []
       }
+      gait_analysis: {
+        Row: {
+          analysis_data: Json
+          balance_score: number | null
+          created_at: string
+          id: string
+          session_id: string | null
+          step_length: number | null
+          step_width: number | null
+          symmetry_score: number | null
+          user_id: string
+          walking_speed: number | null
+        }
+        Insert: {
+          analysis_data?: Json
+          balance_score?: number | null
+          created_at?: string
+          id?: string
+          session_id?: string | null
+          step_length?: number | null
+          step_width?: number | null
+          symmetry_score?: number | null
+          user_id: string
+          walking_speed?: number | null
+        }
+        Update: {
+          analysis_data?: Json
+          balance_score?: number | null
+          created_at?: string
+          id?: string
+          session_id?: string | null
+          step_length?: number | null
+          step_width?: number | null
+          symmetry_score?: number | null
+          user_id?: string
+          walking_speed?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gait_analysis_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "exercise_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      movement_analysis: {
+        Row: {
+          balance_metrics: Json | null
+          created_at: string
+          fatigue_level: number | null
+          id: string
+          joint_angles: Json
+          movement_quality_score: number | null
+          pain_indicators: Json | null
+          range_of_motion: Json
+          session_id: string
+          user_id: string
+        }
+        Insert: {
+          balance_metrics?: Json | null
+          created_at?: string
+          fatigue_level?: number | null
+          id?: string
+          joint_angles?: Json
+          movement_quality_score?: number | null
+          pain_indicators?: Json | null
+          range_of_motion?: Json
+          session_id: string
+          user_id: string
+        }
+        Update: {
+          balance_metrics?: Json | null
+          created_at?: string
+          fatigue_level?: number | null
+          id?: string
+          joint_angles?: Json
+          movement_quality_score?: number | null
+          pain_indicators?: Json | null
+          range_of_motion?: Json
+          session_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "movement_analysis_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "exercise_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           age: number | null
@@ -133,6 +360,45 @@ export type Database = {
           recovery_goals?: string[] | null
           severity_level?: string | null
           updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      speech_sessions: {
+        Row: {
+          analysis_results: Json | null
+          audio_url: string | null
+          created_at: string
+          fluency_score: number | null
+          id: string
+          pronunciation_score: number | null
+          session_type: string
+          speech_clarity_score: number | null
+          transcription: string | null
+          user_id: string
+        }
+        Insert: {
+          analysis_results?: Json | null
+          audio_url?: string | null
+          created_at?: string
+          fluency_score?: number | null
+          id?: string
+          pronunciation_score?: number | null
+          session_type: string
+          speech_clarity_score?: number | null
+          transcription?: string | null
+          user_id: string
+        }
+        Update: {
+          analysis_results?: Json | null
+          audio_url?: string | null
+          created_at?: string
+          fluency_score?: number | null
+          id?: string
+          pronunciation_score?: number | null
+          session_type?: string
+          speech_clarity_score?: number | null
+          transcription?: string | null
           user_id?: string
         }
         Relationships: []

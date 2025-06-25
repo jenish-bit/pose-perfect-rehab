@@ -9,6 +9,8 @@ import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
 import ExerciseLibrary from "./pages/ExerciseLibrary";
 import ExerciseSession from "./pages/ExerciseSession";
+import TherapistDashboard from "./pages/TherapistDashboard";
+import ExerciseBuilder from "./pages/ExerciseBuilder";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -75,6 +77,16 @@ const App = () => (
             <Route path="/exercise-session" element={
               <ProtectedRoute>
                 <ExerciseSession />
+              </ProtectedRoute>
+            } />
+            <Route path="/therapist" element={
+              <ProtectedRoute>
+                <TherapistDashboard />
+              </ProtectedRoute>
+            } />
+            <Route path="/exercise-builder" element={
+              <ProtectedRoute>
+                <ExerciseBuilder />
               </ProtectedRoute>
             } />
             <Route path="*" element={<NotFound />} />
