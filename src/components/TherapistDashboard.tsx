@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -119,17 +118,34 @@ const TherapistDashboard: React.FC = () => {
 
       if (sessionsError) throw sessionsError;
 
-      const formattedSessions = sessions?.map(session => ({
-        id: session.id,
-        patient_name: 'Patient', // Would be fetched from patient data
-        exercise_title: session.exercises?.title || 'Unknown Exercise',
-        accuracy_score: session.accuracy_score || 0,
-        reps_completed: session.reps_completed || 0,
-        completed_at: session.completed_at,
-        movement_quality: session.movement_analysis?.[0]?.movement_quality_score * 100 || 0,
-        fatigue_level: session.movement_analysis?.[0]?.fatigue_level || 0,
-        pain_indicators: session.movement_analysis?.[0]?.pain_indicators || []
-      })) || [];
+      const formattedSessions = sessions?.map(session => {
+        // Safely handle pain_indicators which comes from the database as Json type
+        let painIndicators: string[] = [];
+        const painData = session.movement_analysis?.[0]?.pain_indicators;
+        
+        if (Array.isArray(painData)) {
+          painIndicators = painData.map(item => String(item));
+        } else if (typeof painData === 'string') {
+          try {
+            const parsed = JSON.parse(painData);
+            painIndicators = Array.isArray(parsed) ? parsed.map(item => String(item)) : [];
+          } catch {
+            painIndicators = [];
+          }
+        }
+
+        return {
+          id: session.id,
+          patient_name: 'Patient', // Would be fetched from patient data
+          exercise_title: session.exercises?.title || 'Unknown Exercise',
+          accuracy_score: session.accuracy_score || 0,
+          reps_completed: session.reps_completed || 0,
+          completed_at: session.completed_at,
+          movement_quality: (session.movement_analysis?.[0]?.movement_quality_score || 0) * 100,
+          fatigue_level: session.movement_analysis?.[0]?.fatigue_level || 0,
+          pain_indicators: painIndicators
+        };
+      }) || [];
 
       setRecentSessions(formattedSessions);
 

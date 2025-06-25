@@ -1,4 +1,3 @@
-
 import React, { useRef, useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -148,11 +147,11 @@ export const AdvancedWebcamPoseDetection: React.FC<AdvancedWebcamPoseDetectionPr
         .insert({
           session_id: sessionId,
           user_id: user.id,
-          joint_angles: poseData.movements.jointAngles,
-          range_of_motion: poseData.movements.rangeOfMotion,
+          joint_angles: JSON.parse(JSON.stringify(poseData.movements.jointAngles)),
+          range_of_motion: JSON.parse(JSON.stringify(poseData.movements.rangeOfMotion)),
           movement_quality_score: poseData.movements.movementQuality / 100,
           fatigue_level: poseData.movements.fatigueLevel,
-          pain_indicators: poseData.movements.painIndicators,
+          pain_indicators: JSON.parse(JSON.stringify(poseData.movements.painIndicators)),
           balance_metrics: {
             balance_score: poseData.movements.balanceScore,
             symmetry_score: poseData.movements.symmetryScore
@@ -175,7 +174,7 @@ export const AdvancedWebcamPoseDetection: React.FC<AdvancedWebcamPoseDetectionPr
           user_id: user.id,
           session_id: sessionId,
           assessment_type: assessmentType,
-          results,
+          results: JSON.parse(JSON.stringify(results)),
           confidence_score: poseData.confidence,
           recommendations: poseData.feedback
         });
@@ -202,7 +201,7 @@ export const AdvancedWebcamPoseDetection: React.FC<AdvancedWebcamPoseDetectionPr
           balance_score: gaitData.balanceScore / 100,
           analysis_data: {
             exercise_type: exerciseTitle,
-            movement_patterns: poseData.movements
+            movement_patterns: JSON.parse(JSON.stringify(poseData.movements))
           }
         });
 
@@ -821,3 +820,5 @@ export const AdvancedWebcamPoseDetection: React.FC<AdvancedWebcamPoseDetectionPr
     </div>
   );
 };
+
+export default AdvancedWebcamPoseDetection;
