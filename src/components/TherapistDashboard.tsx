@@ -6,6 +6,7 @@ import { Progress } from '@/components/ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuth } from '@/components/auth/AuthProvider';
 import { supabase } from '@/integrations/supabase/client';
+import TherapistNavigation from './TherapistNavigation';
 import { 
   Users, 
   Activity, 
@@ -17,7 +18,8 @@ import {
   Settings,
   Plus,
   Eye,
-  MessageSquare
+  MessageSquare,
+  ArrowLeft
 } from 'lucide-react';
 
 interface Patient {
@@ -47,6 +49,7 @@ interface SessionData {
 
 const TherapistDashboard: React.FC = () => {
   const { user } = useAuth();
+  const [currentView, setCurrentView] = useState<string>('navigation');
   const [patients, setPatients] = useState<Patient[]>([]);
   const [recentSessions, setRecentSessions] = useState<SessionData[]>([]);
   const [customExercises, setCustomExercises] = useState([]);
@@ -176,6 +179,10 @@ const TherapistDashboard: React.FC = () => {
     }
   };
 
+  const handleNavigation = (section: string) => {
+    setCurrentView(section);
+  };
+
   const PatientCard = ({ patient }: { patient: Patient }) => (
     <Card className={`cursor-pointer transition-all hover:shadow-md ${
       selectedPatient === patient.id ? 'ring-2 ring-blue-500' : ''
@@ -221,15 +228,66 @@ const TherapistDashboard: React.FC = () => {
     );
   }
 
+  if (currentView === 'navigation') {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
+        <header className="bg-white/80 backdrop-blur-sm border-b shadow-sm sticky top-0 z-50">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="flex justify-between items-center h-16">
+              <div>
+                <h1 className="text-xl font-bold text-gray-900">Stroke Rehabilitation Platform</h1>
+                <p className="text-sm text-gray-500">Professional Therapist Dashboard</p>
+              </div>
+              <div className="flex items-center space-x-4">
+                <Badge variant="outline" className="bg-green-100 text-green-800">
+                  <Activity className="h-3 w-3 mr-1" />
+                  System Active
+                </Badge>
+                <Button variant="outline" size="sm">
+                  <Settings className="h-4 w-4 mr-2" />
+                  Settings
+                </Button>
+              </div>
+            </div>
+          </div>
+        </header>
+
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <TherapistNavigation 
+            onNavigate={handleNavigation}
+            patientCount={analytics.totalPatients}
+            alertCount={analytics.alertsCount}
+          />
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
       <header className="bg-white border-b shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
-            <div>
-              <h1 className="text-xl font-bold text-gray-900">Therapist Dashboard</h1>
-              <p className="text-sm text-gray-500">Monitor patient progress and manage treatments</p>
+            <div className="flex items-center space-x-4">
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                onClick={() => setCurrentView('navigation')}
+              >
+                <ArrowLeft className="h-4 w-4 mr-2" />
+                Back to Dashboard
+              </Button>
+              <div>
+                <h1 className="text-xl font-bold text-gray-900">
+                  {currentView === 'patients' && 'Patient Management'}
+                  {currentView === 'analytics' && 'AI Analytics'}
+                  {currentView === 'reports' && 'Session Reports'}
+                  {currentView === 'plans' && 'Treatment Plans'}
+                  {currentView === 'alerts' && 'Alerts & Notifications'}
+                </h1>
+                <p className="text-sm text-gray-500">Monitor and manage rehabilitation progress</p>
+              </div>
             </div>
             <div className="flex items-center space-x-4">
               <Button variant="outline">
@@ -293,290 +351,365 @@ const TherapistDashboard: React.FC = () => {
           </Card>
         </div>
 
-        <Tabs defaultValue="patients" className="space-y-6">
-          <TabsList>
-            <TabsTrigger value="patients">Patients</TabsTrigger>
-            <TabsTrigger value="sessions">Recent Sessions</TabsTrigger>
-            <TabsTrigger value="exercises">Custom Exercises</TabsTrigger>
-            <TabsTrigger value="analytics">Advanced Analytics</TabsTrigger>
-          </TabsList>
+        {/* Main Content based on current view */}
+        {currentView === 'patients' && (
+          <Tabs defaultValue="patients" className="space-y-6">
+            <TabsList>
+              <TabsTrigger value="patients">Patients</TabsTrigger>
+              <TabsTrigger value="sessions">Recent Sessions</TabsTrigger>
+              <TabsTrigger value="exercises">Custom Exercises</TabsTrigger>
+              <TabsTrigger value="analytics">Advanced Analytics</TabsTrigger>
+            </TabsList>
 
-          <TabsContent value="patients" className="space-y-6">
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              <div className="lg:col-span-1">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Patient List</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    {patients.map(patient => (
-                      <PatientCard key={patient.id} patient={patient} />
-                    ))}
-                  </CardContent>
-                </Card>
-              </div>
-
-              <div className="lg:col-span-2">
-                {selectedPatient ? (
+            <TabsContent value="patients" className="space-y-6">
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div className="lg:col-span-1">
                   <Card>
                     <CardHeader>
-                      <CardTitle>Patient Details</CardTitle>
+                      <CardTitle>Patient List</CardTitle>
                     </CardHeader>
-                    <CardContent>
-                      {(() => {
-                        const patient = patients.find(p => p.id === selectedPatient);
-                        if (!patient) return null;
-                        
-                        return (
-                          <div className="space-y-6">
-                            <div className="grid grid-cols-2 gap-4">
-                              <div>
-                                <h3 className="font-semibold text-lg">
-                                  {patient.first_name} {patient.last_name}
-                                </h3>
-                                <p className="text-gray-600">{patient.email}</p>
-                              </div>
-                              <div className="text-right">
-                                <Badge variant="outline" className="mb-2">
-                                  {patient.severity_level} severity
-                                </Badge>
-                                <p className="text-sm text-gray-600">Age: {patient.age}</p>
-                              </div>
-                            </div>
-
-                            <div className="grid grid-cols-3 gap-4 text-center">
-                              <div className="p-4 bg-blue-50 rounded-lg">
-                                <div className="text-2xl font-bold text-blue-600">{patient.total_sessions}</div>
-                                <div className="text-sm text-gray-600">Total Sessions</div>
-                              </div>
-                              <div className="p-4 bg-green-50 rounded-lg">
-                                <div className="text-2xl font-bold text-green-600">{patient.avg_accuracy}%</div>
-                                <div className="text-sm text-gray-600">Avg Accuracy</div>
-                              </div>
-                              <div className="p-4 bg-purple-50 rounded-lg">
-                                <div className="text-2xl font-bold text-purple-600">+{patient.progress_trend}%</div>
-                                <div className="text-sm text-gray-600">Improvement</div>
-                              </div>
-                            </div>
-
-                            <div className="space-y-4">
-                              <h4 className="font-semibold">Recent Progress</h4>
-                              <div className="space-y-2">
-                                <div className="flex justify-between text-sm">
-                                  <span>Movement Quality</span>
-                                  <span>85%</span>
-                                </div>
-                                <Progress value={85} />
-                                <div className="flex justify-between text-sm">
-                                  <span>Exercise Compliance</span>
-                                  <span>92%</span>
-                                </div>
-                                <Progress value={92} />
-                                <div className="flex justify-between text-sm">
-                                  <span>Recovery Rate</span>
-                                  <span>78%</span>
-                                </div>
-                                <Progress value={78} />
-                              </div>
-                            </div>
-
-                            <div className="flex gap-3">
-                              <Button variant="outline" size="sm">
-                                <MessageSquare className="h-4 w-4 mr-2" />
-                                Send Message
-                              </Button>
-                              <Button variant="outline" size="sm">
-                                <Calendar className="h-4 w-4 mr-2" />
-                                Schedule Session
-                              </Button>
-                              <Button variant="outline" size="sm">
-                                <FileText className="h-4 w-4 mr-2" />
-                                View Reports
-                              </Button>
-                            </div>
-                          </div>
-                        );
-                      })()}
+                    <CardContent className="space-y-4">
+                      {patients.map(patient => (
+                        <PatientCard key={patient.id} patient={patient} />
+                      ))}
                     </CardContent>
                   </Card>
-                ) : (
-                  <Card>
-                    <CardContent className="flex items-center justify-center h-96">
-                      <div className="text-center text-gray-500">
-                        <Users className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                        <p>Select a patient to view details</p>
-                      </div>
-                    </CardContent>
-                  </Card>
-                )}
-              </div>
-            </div>
-          </TabsContent>
-
-          <TabsContent value="sessions" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Recent Exercise Sessions</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {recentSessions.map(session => (
-                    <div key={session.id} className="p-4 border rounded-lg">
-                      <div className="flex justify-between items-start mb-3">
-                        <div>
-                          <h3 className="font-semibold">{session.patient_name}</h3>
-                          <p className="text-sm text-gray-600">{session.exercise_title}</p>
-                        </div>
-                        <div className="text-right">
-                          <Badge variant={session.accuracy_score > 0.8 ? "default" : "secondary"}>
-                            {Math.round(session.accuracy_score * 100)}% accuracy
-                          </Badge>
-                          <p className="text-xs text-gray-500 mt-1">
-                            {new Date(session.completed_at).toLocaleDateString()}
-                          </p>
-                        </div>
-                      </div>
-
-                      <div className="grid grid-cols-4 gap-4 text-sm">
-                        <div>
-                          <span className="text-gray-600">Reps:</span>
-                          <span className="font-semibold ml-1">{session.reps_completed}</span>
-                        </div>
-                        <div>
-                          <span className="text-gray-600">Quality:</span>
-                          <span className="font-semibold ml-1">{Math.round(session.movement_quality)}%</span>
-                        </div>
-                        <div>
-                          <span className="text-gray-600">Fatigue:</span>
-                          <span className="font-semibold ml-1">{session.fatigue_level}/10</span>
-                        </div>
-                        <div>
-                          {session.pain_indicators.length > 0 && (
-                            <Badge variant="destructive" className="text-xs">
-                              <AlertTriangle className="h-3 w-3 mr-1" />
-                              Pain Detected
-                            </Badge>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  ))}
                 </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
 
-          <TabsContent value="exercises" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <div className="flex justify-between items-center">
-                  <CardTitle>Custom Exercises</CardTitle>
-                  <Button>
-                    <Plus className="h-4 w-4 mr-2" />
-                    Create New
-                  </Button>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {customExercises.map((exercise: any) => (
-                    <Card key={exercise.id} className="cursor-pointer hover:shadow-md transition-shadow">
-                      <CardContent className="p-4">
-                        <h3 className="font-semibold mb-2">{exercise.title}</h3>
-                        <p className="text-sm text-gray-600 mb-3">{exercise.description}</p>
-                        <div className="flex justify-between items-center">
-                          <Badge variant="outline">
-                            Level {exercise.difficulty_level}
-                          </Badge>
-                          <div className="flex gap-2">
-                            <Button variant="outline" size="sm">
-                              <Eye className="h-4 w-4" />
-                            </Button>
-                            <Button variant="outline" size="sm">
-                              <Settings className="h-4 w-4" />
-                            </Button>
-                          </div>
+                <div className="lg:col-span-2">
+                  {selectedPatient ? (
+                    <Card>
+                      <CardHeader>
+                        <CardTitle>Patient Details</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        {(() => {
+                          const patient = patients.find(p => p.id === selectedPatient);
+                          if (!patient) return null;
+                          
+                          return (
+                            <div className="space-y-6">
+                              <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                  <h3 className="font-semibold text-lg">
+                                    {patient.first_name} {patient.last_name}
+                                  </h3>
+                                  <p className="text-gray-600">{patient.email}</p>
+                                </div>
+                                <div className="text-right">
+                                  <Badge variant="outline" className="mb-2">
+                                    {patient.severity_level} severity
+                                  </Badge>
+                                  <p className="text-sm text-gray-600">Age: {patient.age}</p>
+                                </div>
+                              </div>
+
+                              <div className="grid grid-cols-3 gap-4 text-center">
+                                <div className="p-4 bg-blue-50 rounded-lg">
+                                  <div className="text-2xl font-bold text-blue-600">{patient.total_sessions}</div>
+                                  <div className="text-sm text-gray-600">Total Sessions</div>
+                                </div>
+                                <div className="p-4 bg-green-50 rounded-lg">
+                                  <div className="text-2xl font-bold text-green-600">{patient.avg_accuracy}%</div>
+                                  <div className="text-sm text-gray-600">Avg Accuracy</div>
+                                </div>
+                                <div className="p-4 bg-purple-50 rounded-lg">
+                                  <div className="text-2xl font-bold text-purple-600">+{patient.progress_trend}%</div>
+                                  <div className="text-sm text-gray-600">Improvement</div>
+                                </div>
+                              </div>
+
+                              <div className="space-y-4">
+                                <h4 className="font-semibold">Recent Progress</h4>
+                                <div className="space-y-2">
+                                  <div className="flex justify-between text-sm">
+                                    <span>Movement Quality</span>
+                                    <span>85%</span>
+                                  </div>
+                                  <Progress value={85} />
+                                  <div className="flex justify-between text-sm">
+                                    <span>Exercise Compliance</span>
+                                    <span>92%</span>
+                                  </div>
+                                  <Progress value={92} />
+                                  <div className="flex justify-between text-sm">
+                                    <span>Recovery Rate</span>
+                                    <span>78%</span>
+                                  </div>
+                                  <Progress value={78} />
+                                </div>
+                              </div>
+
+                              <div className="flex gap-3">
+                                <Button variant="outline" size="sm">
+                                  <MessageSquare className="h-4 w-4 mr-2" />
+                                  Send Message
+                                </Button>
+                                <Button variant="outline" size="sm">
+                                  <Calendar className="h-4 w-4 mr-2" />
+                                  Schedule Session
+                                </Button>
+                                <Button variant="outline" size="sm">
+                                  <FileText className="h-4 w-4 mr-2" />
+                                  View Reports
+                                </Button>
+                              </div>
+                            </div>
+                          );
+                        })()}
+                      </CardContent>
+                    </Card>
+                  ) : (
+                    <Card>
+                      <CardContent className="flex items-center justify-center h-96">
+                        <div className="text-center text-gray-500">
+                          <Users className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                          <p>Select a patient to view details</p>
                         </div>
                       </CardContent>
                     </Card>
-                  ))}
+                  )}
+                </div>
+              </div>
+            </TabsContent>
+
+            <TabsContent value="sessions" className="space-y-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Recent Exercise Sessions</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    {recentSessions.map(session => (
+                      <div key={session.id} className="p-4 border rounded-lg">
+                        <div className="flex justify-between items-start mb-3">
+                          <div>
+                            <h3 className="font-semibold">{session.patient_name}</h3>
+                            <p className="text-sm text-gray-600">{session.exercise_title}</p>
+                          </div>
+                          <div className="text-right">
+                            <Badge variant={session.accuracy_score > 0.8 ? "default" : "secondary"}>
+                              {Math.round(session.accuracy_score * 100)}% accuracy
+                            </Badge>
+                            <p className="text-xs text-gray-500 mt-1">
+                              {new Date(session.completed_at).toLocaleDateString()}
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-4 gap-4 text-sm">
+                          <div>
+                            <span className="text-gray-600">Reps:</span>
+                            <span className="font-semibold ml-1">{session.reps_completed}</span>
+                          </div>
+                          <div>
+                            <span className="text-gray-600">Quality:</span>
+                            <span className="font-semibold ml-1">{Math.round(session.movement_quality)}%</span>
+                          </div>
+                          <div>
+                            <span className="text-gray-600">Fatigue:</span>
+                            <span className="font-semibold ml-1">{session.fatigue_level}/10</span>
+                          </div>
+                          <div>
+                            {session.pain_indicators.length > 0 && (
+                              <Badge variant="destructive" className="text-xs">
+                                <AlertTriangle className="h-3 w-3 mr-1" />
+                                Pain Detected
+                              </Badge>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            <TabsContent value="exercises" className="space-y-6">
+              <Card>
+                <CardHeader>
+                  <div className="flex justify-between items-center">
+                    <CardTitle>Custom Exercises</CardTitle>
+                    <Button>
+                      <Plus className="h-4 w-4 mr-2" />
+                      Create New
+                    </Button>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {customExercises.map((exercise: any) => (
+                      <Card key={exercise.id} className="cursor-pointer hover:shadow-md transition-shadow">
+                        <CardContent className="p-4">
+                          <h3 className="font-semibold mb-2">{exercise.title}</h3>
+                          <p className="text-sm text-gray-600 mb-3">{exercise.description}</p>
+                          <div className="flex justify-between items-center">
+                            <Badge variant="outline">
+                              Level {exercise.difficulty_level}
+                            </Badge>
+                            <div className="flex gap-2">
+                              <Button variant="outline" size="sm">
+                                <Eye className="h-4 w-4" />
+                              </Button>
+                              <Button variant="outline" size="sm">
+                                <Settings className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            <TabsContent value="analytics" className="space-y-6">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Brain className="h-5 w-5" />
+                      AI Insights
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4">
+                      <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                        <h4 className="font-semibold text-blue-800 mb-1">Recovery Prediction</h4>
+                        <p className="text-sm text-blue-700">
+                          Based on current progress, Patient John Doe is predicted to achieve 85% 
+                          functional recovery within 3 months.
+                        </p>
+                      </div>
+                      <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
+                        <h4 className="font-semibold text-green-800 mb-1">Exercise Recommendation</h4>
+                        <p className="text-sm text-green-700">
+                          Increase balance training intensity for improved stability scores.
+                        </p>
+                      </div>
+                      <div className="p-3 bg-orange-50 border border-orange-200 rounded-lg">
+                        <h4 className="font-semibold text-orange-800 mb-1">Attention Required</h4>
+                        <p className="text-sm text-orange-700">
+                          Patient Jane Smith shows fatigue patterns. Consider rest intervals.
+                        </p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Performance Trends</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4">
+                      <div>
+                        <div className="flex justify-between items-center mb-2">
+                          <span className="text-sm font-medium">Overall Improvement</span>
+                          <span className="text-sm text-green-600 font-semibold">+15%</span>
+                        </div>
+                        <Progress value={85} className="mb-1" />
+                        <p className="text-xs text-gray-600">Compared to last month</p>
+                      </div>
+                      
+                      <div>
+                        <div className="flex justify-between items-center mb-2">
+                          <span className="text-sm font-medium">Exercise Compliance</span>
+                          <span className="text-sm text-blue-600 font-semibold">92%</span>
+                        </div>
+                        <Progress value={92} className="mb-1" />
+                        <p className="text-xs text-gray-600">Patients completing assigned exercises</p>
+                      </div>
+                      
+                      <div>
+                        <div className="flex justify-between items-center mb-2">
+                          <span className="text-sm font-medium">Session Quality</span>
+                          <span className="text-sm text-purple-600 font-semibold">78%</span>
+                        </div>
+                        <Progress value={78} className="mb-1" />
+                        <p className="text-xs text-gray-600">Average movement quality score</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            </TabsContent>
+          </Tabs>
+        )}
+
+        {currentView === 'analytics' && (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Brain className="h-5 w-5" />
+                  AI Insights
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                    <h4 className="font-semibold text-blue-800 mb-1">Recovery Prediction</h4>
+                    <p className="text-sm text-blue-700">
+                      Based on current progress, Patient John Doe is predicted to achieve 85% 
+                      functional recovery within 3 months.
+                    </p>
+                  </div>
+                  <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
+                    <h4 className="font-semibold text-green-800 mb-1">Exercise Recommendation</h4>
+                    <p className="text-sm text-green-700">
+                      Increase balance training intensity for improved stability scores.
+                    </p>
+                  </div>
+                  <div className="p-3 bg-orange-50 border border-orange-200 rounded-lg">
+                    <h4 className="font-semibold text-orange-800 mb-1">Attention Required</h4>
+                    <p className="text-sm text-orange-700">
+                      Patient Jane Smith shows fatigue patterns. Consider rest intervals.
+                    </p>
+                  </div>
                 </div>
               </CardContent>
             </Card>
-          </TabsContent>
 
-          <TabsContent value="analytics" className="space-y-6">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Brain className="h-5 w-5" />
-                    AI Insights
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                      <h4 className="font-semibold text-blue-800 mb-1">Recovery Prediction</h4>
-                      <p className="text-sm text-blue-700">
-                        Based on current progress, Patient John Doe is predicted to achieve 85% 
-                        functional recovery within 3 months.
-                      </p>
+            <Card>
+              <CardHeader>
+                <CardTitle>Performance Trends</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <div>
+                    <div className="flex justify-between items-center mb-2">
+                      <span className="text-sm font-medium">Overall Improvement</span>
+                      <span className="text-sm text-green-600 font-semibold">+15%</span>
                     </div>
-                    <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
-                      <h4 className="font-semibold text-green-800 mb-1">Exercise Recommendation</h4>
-                      <p className="text-sm text-green-700">
-                        Increase balance training intensity for improved stability scores.
-                      </p>
-                    </div>
-                    <div className="p-3 bg-orange-50 border border-orange-200 rounded-lg">
-                      <h4 className="font-semibold text-orange-800 mb-1">Attention Required</h4>
-                      <p className="text-sm text-orange-700">
-                        Patient Jane Smith shows fatigue patterns. Consider rest intervals.
-                      </p>
-                    </div>
+                    <Progress value={85} className="mb-1" />
+                    <p className="text-xs text-gray-600">Compared to last month</p>
                   </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle>Performance Trends</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    <div>
-                      <div className="flex justify-between items-center mb-2">
-                        <span className="text-sm font-medium">Overall Improvement</span>
-                        <span className="text-sm text-green-600 font-semibold">+15%</span>
-                      </div>
-                      <Progress value={85} className="mb-1" />
-                      <p className="text-xs text-gray-600">Compared to last month</p>
+                  
+                  <div>
+                    <div className="flex justify-between items-center mb-2">
+                      <span className="text-sm font-medium">Exercise Compliance</span>
+                      <span className="text-sm text-blue-600 font-semibold">92%</span>
                     </div>
-                    
-                    <div>
-                      <div className="flex justify-between items-center mb-2">
-                        <span className="text-sm font-medium">Exercise Compliance</span>
-                        <span className="text-sm text-blue-600 font-semibold">92%</span>
-                      </div>
-                      <Progress value={92} className="mb-1" />
-                      <p className="text-xs text-gray-600">Patients completing assigned exercises</p>
-                    </div>
-                    
-                    <div>
-                      <div className="flex justify-between items-center mb-2">
-                        <span className="text-sm font-medium">Session Quality</span>
-                        <span className="text-sm text-purple-600 font-semibold">78%</span>
-                      </div>
-                      <Progress value={78} className="mb-1" />
-                      <p className="text-xs text-gray-600">Average movement quality score</p>
-                    </div>
+                    <Progress value={92} className="mb-1" />
+                    <p className="text-xs text-gray-600">Patients completing assigned exercises</p>
                   </div>
-                </CardContent>
-              </Card>
-            </div>
-          </TabsContent>
-        </Tabs>
+                  
+                  <div>
+                    <div className="flex justify-between items-center mb-2">
+                      <span className="text-sm font-medium">Session Quality</span>
+                      <span className="text-sm text-purple-600 font-semibold">78%</span>
+                    </div>
+                    <Progress value={78} className="mb-1" />
+                    <p className="text-xs text-gray-600">Average movement quality score</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
       </div>
     </div>
   );
