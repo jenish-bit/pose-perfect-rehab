@@ -65,6 +65,16 @@ const Dashboard: React.FC = () => {
 
   const quickActions = [
     {
+      title: "Advanced AI Features",
+      description: "Experience cutting-edge AI adaptations, voice coaching, remote monitoring, and emotion analysis",
+      icon: Sparkles,
+      color: "bg-gradient-to-r from-purple-50 to-pink-50 border-purple-200 hover:from-purple-100 hover:to-pink-100",
+      iconColor: "text-purple-600",
+      badge: "Next-Gen AI",
+      badgeColor: "bg-purple-100 text-purple-800",
+      onClick: () => navigate('/ai-features')
+    },
+    {
       title: "Therapist Dashboard",
       description: "Access professional therapist tools, patient management, and analytics",
       icon: Users,
