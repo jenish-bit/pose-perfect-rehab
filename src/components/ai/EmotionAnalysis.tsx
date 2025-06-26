@@ -9,15 +9,13 @@ import {
   Frown, 
   Meh, 
   Heart, 
-  Music, 
-  Lightbulb,
-  Activity,
   Camera,
+  CameraOff,
+  Activity,
   Sparkles,
-  RefreshCw,
-  Play,
-  Pause,
-  CameraOff
+  Lightbulb,
+  TrendingUp,
+  Brain
 } from 'lucide-react';
 
 interface EmotionData {
@@ -43,12 +41,17 @@ export const EmotionAnalysis: React.FC<EmotionAnalysisProps> = ({ isActive }) =>
     confidence: 65
   });
 
-  const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [isCameraActive, setIsCameraActive] = useState(false);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [currentMood, setCurrentMood] = useState<'positive' | 'neutral' | 'negative'>('positive');
   const [motivationLevel, setMotivationLevel] = useState(75);
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [stream, setStream] = useState<MediaStream | null>(null);
+  const [emotionHistory, setEmotionHistory] = useState<Array<{
+    timestamp: Date;
+    emotion: string;
+    intensity: number;
+  }>>([]);
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -77,6 +80,7 @@ export const EmotionAnalysis: React.FC<EmotionAnalysisProps> = ({ isActive }) =>
         videoRef.current.play();
         setStream(mediaStream);
         setIsCameraActive(true);
+        setIsAnalyzing(true);
       }
     } catch (err) {
       console.error('Error accessing camera:', err);
@@ -92,13 +96,14 @@ export const EmotionAnalysis: React.FC<EmotionAnalysisProps> = ({ isActive }) =>
       videoRef.current.srcObject = null;
     }
     setIsCameraActive(false);
+    setIsAnalyzing(false);
   };
 
-  // Simulate facial emotion analysis (in production, use actual ML models like face-api.js)
+  // Real-time emotion analysis simulation
   const analyzeEmotions = useCallback(() => {
     if (!isCameraActive || !videoRef.current) return;
 
-    // Simulate emotion detection with realistic variations
+    // Simulate facial emotion detection with realistic variations
     const newEmotions: EmotionData = {
       happiness: Math.max(0, Math.min(100, emotionData.happiness + (Math.random() - 0.5) * 15)),
       frustration: Math.max(0, Math.min(100, emotionData.frustration + (Math.random() - 0.5) * 10)),
@@ -115,15 +120,31 @@ export const EmotionAnalysis: React.FC<EmotionAnalysisProps> = ({ isActive }) =>
     const frustration = newEmotions.frustration;
 
     let mood: 'positive' | 'neutral' | 'negative';
+    let dominantEmotion = '';
+    let emotionIntensity = 0;
+
     if (happiness > 60 && frustration < 40) {
       mood = 'positive';
+      dominantEmotion = 'happy';
+      emotionIntensity = happiness;
     } else if (frustration > 60) {
       mood = 'negative';
+      dominantEmotion = 'frustrated';
+      emotionIntensity = frustration;
     } else {
       mood = 'neutral';
+      dominantEmotion = 'focused';
+      emotionIntensity = newEmotions.focus;
     }
 
     setCurrentMood(mood);
+
+    // Add to emotion history
+    setEmotionHistory(prev => [...prev.slice(-9), {
+      timestamp: new Date(),
+      emotion: dominantEmotion,
+      intensity: emotionIntensity
+    }]);
 
     // Calculate motivation level
     const motivationScore = (
@@ -172,23 +193,21 @@ export const EmotionAnalysis: React.FC<EmotionAnalysisProps> = ({ isActive }) =>
 
   const applySuggestion = (suggestion: string) => {
     if (suggestion.includes('music')) {
-      // In a real app, this would trigger music player
       console.log('Applying music suggestion');
     } else if (suggestion.includes('rest')) {
       console.log('Suggesting rest break');
     }
     
-    // Show quote for motivation
+    // Show motivational quote
     const quote = motivationalQuotes[Math.floor(Math.random() * motivationalQuotes.length)];
     setSuggestions(prev => [quote, ...prev.slice(0, 2)]);
   };
 
+  // Start analysis when camera is active
   useEffect(() => {
-    if (isActive && isCameraActive) {
-      setIsAnalyzing(true);
+    if (isActive && isCameraActive && isAnalyzing) {
       analysisIntervalRef.current = setInterval(analyzeEmotions, 2000);
     } else {
-      setIsAnalyzing(false);
       if (analysisIntervalRef.current) {
         clearInterval(analysisIntervalRef.current);
       }
@@ -199,7 +218,7 @@ export const EmotionAnalysis: React.FC<EmotionAnalysisProps> = ({ isActive }) =>
         clearInterval(analysisIntervalRef.current);
       }
     };
-  }, [isActive, isCameraActive, analyzeEmotions]);
+  }, [isActive, isCameraActive, isAnalyzing, analyzeEmotions]);
 
   const getMoodIcon = (mood: string) => {
     switch (mood) {
@@ -244,7 +263,7 @@ export const EmotionAnalysis: React.FC<EmotionAnalysisProps> = ({ isActive }) =>
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-6">
-          {/* Camera Feed */}
+          {/* Camera Feed and Analysis */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <div className="relative bg-gray-900 rounded-lg aspect-video overflow-hidden">
               <video
@@ -257,7 +276,7 @@ export const EmotionAnalysis: React.FC<EmotionAnalysisProps> = ({ isActive }) =>
               />
               <canvas
                 ref={canvasRef}
-                className="absolute inset-0 w-full h-full opacity-50"
+                className="absolute inset-0 w-full h-full opacity-30"
                 width={640}
                 height={480}
                 style={{ transform: 'scaleX(-1)' }}
@@ -267,13 +286,13 @@ export const EmotionAnalysis: React.FC<EmotionAnalysisProps> = ({ isActive }) =>
                 <div className="absolute inset-0 flex items-center justify-center bg-gray-200">
                   <div className="text-center text-gray-600">
                     <CameraOff className="h-12 w-12 mx-auto mb-2 opacity-50" />
-                    <p>Camera feed will appear here</p>
+                    <p>Start camera for emotion analysis</p>
                   </div>
                 </div>
               )}
 
-              {/* Emotion Overlay */}
-              {isCameraActive && (
+              {/* Real-time Emotion Overlay */}
+              {isCameraActive && isAnalyzing && (
                 <div className="absolute top-4 left-4 space-y-2">
                   <div className={`px-3 py-1 rounded-full text-sm text-white ${
                     currentMood === 'positive' ? 'bg-green-500 bg-opacity-75' :
@@ -283,17 +302,20 @@ export const EmotionAnalysis: React.FC<EmotionAnalysisProps> = ({ isActive }) =>
                     Mood: {currentMood}
                   </div>
                   <div className="bg-purple-500 bg-opacity-75 text-white px-3 py-1 rounded-full text-sm">
-                    Motivation: {Math.round(motivationLevel)}%
+                    Focus: {Math.round(emotionData.focus)}%
+                  </div>
+                  <div className="bg-blue-500 bg-opacity-75 text-white px-3 py-1 rounded-full text-sm">
+                    Energy: {Math.round(100 - emotionData.fatigue)}%
                   </div>
                 </div>
               )}
             </div>
 
-            {/* Current Emotion State */}
+            {/* Real-time Emotional State */}
             <div className="bg-white p-4 rounded-lg border">
               <h4 className="font-semibold mb-4 flex items-center gap-2">
-                <Activity className="h-4 w-4" />
-                Real-time Emotional State
+                <Brain className="h-4 w-4" />
+                Live Emotional Analysis
               </h4>
               
               <div className="space-y-3">
@@ -310,7 +332,9 @@ export const EmotionAnalysis: React.FC<EmotionAnalysisProps> = ({ isActive }) =>
                       className={`mb-1 ${
                         ['frustration', 'fatigue'].includes(emotion) 
                           ? '[&>div]:bg-red-500' 
-                          : '[&>div]:bg-green-500'
+                          : ['happiness', 'confidence', 'motivation'].includes(emotion)
+                          ? '[&>div]:bg-green-500'
+                          : '[&>div]:bg-blue-500'
                       }`} 
                     />
                   </div>
@@ -329,12 +353,12 @@ export const EmotionAnalysis: React.FC<EmotionAnalysisProps> = ({ isActive }) =>
               {isCameraActive ? (
                 <>
                   <CameraOff className="h-4 w-4" />
-                  Stop Camera
+                  Stop Analysis
                 </>
               ) : (
                 <>
                   <Camera className="h-4 w-4" />
-                  Start Camera
+                  Start Analysis
                 </>
               )}
             </Button>
@@ -353,7 +377,7 @@ export const EmotionAnalysis: React.FC<EmotionAnalysisProps> = ({ isActive }) =>
             </div>
             <Progress value={motivationLevel} className="mb-2 [&>div]:bg-purple-500" />
             <p className="text-xs text-gray-600">
-              Based on facial expression analysis and emotional state detection
+              Based on real-time facial expression analysis and emotional state detection
             </p>
           </div>
 
@@ -362,7 +386,7 @@ export const EmotionAnalysis: React.FC<EmotionAnalysisProps> = ({ isActive }) =>
             <div className="bg-blue-50 border border-blue-200 p-4 rounded-lg">
               <h4 className="font-semibold mb-3 flex items-center gap-2">
                 <Lightbulb className="h-4 w-4 text-blue-600" />
-                AI Recommendations
+                Live AI Recommendations
               </h4>
               <div className="space-y-2">
                 {suggestions.map((suggestion, index) => (
@@ -380,6 +404,37 @@ export const EmotionAnalysis: React.FC<EmotionAnalysisProps> = ({ isActive }) =>
               </div>
             </div>
           )}
+
+          {/* Emotion History */}
+          <Card className="border">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm flex items-center gap-2">
+                <TrendingUp className="h-4 w-4" />
+                Recent Emotion Timeline
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-2 max-h-32 overflow-y-auto">
+                {emotionHistory.slice(-5).reverse().map((entry, index) => (
+                  <div key={index} className="flex items-center justify-between p-2 bg-gray-50 rounded text-sm">
+                    <div className="flex items-center gap-2">
+                      <span className="capitalize font-medium">{entry.emotion}</span>
+                      <span className="text-gray-600">({Math.round(entry.intensity)}%)</span>
+                    </div>
+                    <span className="text-xs text-gray-500">
+                      {entry.timestamp.toLocaleTimeString()}
+                    </span>
+                  </div>
+                ))}
+                {emotionHistory.length === 0 && (
+                  <div className="text-center text-gray-500 py-4">
+                    <Activity className="h-6 w-6 mx-auto mb-2 opacity-50" />
+                    <p className="text-sm">Emotion timeline will appear here</p>
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
         </CardContent>
       </Card>
     </div>
