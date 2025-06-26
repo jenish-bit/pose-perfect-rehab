@@ -16,10 +16,11 @@ import {
   Pause,
   Settings,
   Sparkles,
-  Activity
+  Activity,
+  Zap
 } from 'lucide-react';
 
-// Import our AI components
+// Import our enhanced AI components
 import { NeuroAdaptEngine } from '@/components/ai/NeuroAdaptEngine';
 import { VoiceGuidedCoach } from '@/components/ai/VoiceGuidedCoach';
 import { TeleRehabMonitor } from '@/components/ai/TeleRehabMonitor';
@@ -28,7 +29,6 @@ import { EmotionAnalysis } from '@/components/ai/EmotionAnalysis';
 const AIFeatures: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const videoRef = useRef<HTMLVideoElement>(null);
   
   const [isSessionActive, setIsSessionActive] = useState(false);
   const [activeFeatures, setActiveFeatures] = useState({
@@ -38,22 +38,11 @@ const AIFeatures: React.FC = () => {
     emotionAnalysis: false
   });
 
-  // Mock pose data for demonstration
-  const [mockPoseData] = useState({
-    landmarks: [],
-    movements: {
-      jointAngles: [],
-      rangeOfMotion: {},
-      movementQuality: 75,
-      fatigueLevel: 3,
-      painIndicators: [],
-      balanceScore: 80,
-      symmetryScore: 85
-    },
-    isCorrectForm: true,
-    confidence: 0.85,
-    feedback: 'Excellent form! Keep up the great work!',
-    exercisePhase: 'execution' as const
+  const [sessionStats, setSessionStats] = useState({
+    adaptations: 0,
+    voiceInteractions: 0,
+    remoteViewers: 2,
+    motivationScore: 87
   });
 
   const handleFeatureToggle = (feature: keyof typeof activeFeatures) => {
@@ -61,73 +50,57 @@ const AIFeatures: React.FC = () => {
       ...prev,
       [feature]: !prev[feature]
     }));
-  };
-
-  const handleSessionToggle = () => {
-    setIsSessionActive(!isSessionActive);
-    if (!isSessionActive) {
-      // Start all active features
-      Object.keys(activeFeatures).forEach(feature => {
-        if (activeFeatures[feature as keyof typeof activeFeatures]) {
-          console.log(`Starting ${feature}...`);
-        }
-      });
+    
+    // Update stats when features are toggled
+    if (!activeFeatures[feature]) {
+      console.log(`Starting ${feature}...`);
+      if (feature === 'voiceCoach') {
+        setSessionStats(prev => ({ ...prev, voiceInteractions: prev.voiceInteractions + 1 }));
+      } else if (feature === 'neuroAdapt') {
+        setSessionStats(prev => ({ ...prev, adaptations: prev.adaptations + 1 }));
+      }
     }
   };
 
-  const handleAdaptiveSettingsChange = (settings: any) => {
-    console.log('Adaptive settings changed:', settings);
-  };
-
-  const handleFeedbackGenerated = (feedback: string) => {
-    console.log('Voice feedback:', feedback);
-  };
-
-  const handleContentSuggestion = (content: any) => {
-    console.log('Content suggestion:', content);
-  };
-
-  const handleExerciseModification = (modification: string) => {
-    console.log('Exercise modification:', modification);
-  };
-
-  const handleSendMessage = (message: string, type: string) => {
-    console.log('TeleRehab message:', message, type);
-  };
-
-  const handleSessionControl = (action: string) => {
-    console.log('Session control:', action);
-    if (action === 'end') {
-      setIsSessionActive(false);
+  const toggleSession = () => {
+    setIsSessionActive(!isSessionActive);
+    if (!isSessionActive) {
+      // Reset stats when starting new session
+      setSessionStats({
+        adaptations: 0,
+        voiceInteractions: 0,
+        remoteViewers: Math.floor(Math.random() * 3) + 1,
+        motivationScore: 75 + Math.floor(Math.random() * 20)
+      });
     }
   };
 
   const aiFeatureStats = [
     {
       title: "AI Adaptations",
-      value: "12",
-      change: "+4 this session",
+      value: sessionStats.adaptations.toString(),
+      change: activeFeatures.neuroAdapt ? "Active" : "Inactive",
       icon: Brain,
       color: "text-purple-600"
     },
     {
       title: "Voice Interactions",
-      value: "28",
-      change: "+8 feedbacks",
+      value: sessionStats.voiceInteractions.toString(),
+      change: activeFeatures.voiceCoach ? "Active" : "Inactive",
       icon: Bot,
       color: "text-green-600"
     },
     {
       title: "Remote Viewers",
-      value: "2",
-      change: "Active now",
+      value: activeFeatures.teleRehab ? sessionStats.remoteViewers.toString() : "0",
+      change: activeFeatures.teleRehab ? "Monitoring" : "Offline",
       icon: Video,
       color: "text-blue-600"
     },
     {
       title: "Motivation Score",
-      value: "87%",
-      change: "+12% today",
+      value: `${sessionStats.motivationScore}%`,
+      change: activeFeatures.emotionAnalysis ? "Analyzing" : "Paused",
       icon: Heart,
       color: "text-pink-600"
     }
@@ -150,22 +123,23 @@ const AIFeatures: React.FC = () => {
                 </div>
                 <div>
                   <h1 className="text-xl font-bold text-gray-900">Advanced AI Features</h1>
-                  <p className="text-xs text-gray-500">Next-Generation Rehabilitation Technology</p>
+                  <p className="text-xs text-gray-500">Real-Time Rehabilitation Technology</p>
                 </div>
               </div>
             </div>
             
             <div className="flex items-center space-x-4">
-              <Badge variant={isSessionActive ? 'default' : 'secondary'}>
-                {isSessionActive ? 'Session Active' : 'Session Paused'}
+              <Badge variant={isSessionActive ? 'default' : 'secondary'} className="flex items-center gap-1">
+                <Zap className="h-3 w-3" />
+                {isSessionActive ? 'Live Session' : 'Session Paused'}
               </Badge>
               <Button 
-                onClick={handleSessionToggle}
+                onClick={toggleSession}
                 variant={isSessionActive ? 'destructive' : 'default'}
                 className="flex items-center gap-2"
               >
                 {isSessionActive ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
-                {isSessionActive ? 'Stop Session' : 'Start Session'}
+                {isSessionActive ? 'Stop Session' : 'Start Live Session'}
               </Button>
             </div>
           </div>
@@ -176,18 +150,18 @@ const AIFeatures: React.FC = () => {
         {/* Welcome Section */}
         <div className="mb-8">
           <h2 className="text-3xl font-bold text-gray-900 mb-2">
-            Advanced AI-Powered Rehabilitation
+            Real-Time AI-Powered Rehabilitation
           </h2>
           <p className="text-gray-600">
-            Experience cutting-edge AI features that adapt to your needs, provide voice guidance, 
+            Experience live AI features that adapt to your movements, provide voice guidance, 
             enable remote monitoring, and analyze your emotional state for optimal recovery.
           </p>
         </div>
 
-        {/* Feature Stats */}
+        {/* Live Feature Stats */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           {aiFeatureStats.map((stat, index) => (
-            <Card key={index} className="hover:shadow-lg transition-shadow duration-300">
+            <Card key={index} className="hover:shadow-lg transition-all duration-300 hover:scale-105">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium text-gray-600">
                   {stat.title}
@@ -196,7 +170,11 @@ const AIFeatures: React.FC = () => {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold text-gray-900">{stat.value}</div>
-                <p className="text-xs text-green-600 font-medium mt-1">
+                <p className={`text-xs font-medium mt-1 ${
+                  stat.change.includes('Active') || stat.change.includes('Monitoring') || stat.change.includes('Analyzing')
+                    ? 'text-green-600' 
+                    : 'text-gray-500'
+                }`}>
                   {stat.change}
                 </p>
               </CardContent>
@@ -205,45 +183,64 @@ const AIFeatures: React.FC = () => {
         </div>
 
         {/* Feature Toggle Panel */}
-        <Card className="mb-8">
+        <Card className="mb-8 border-2 border-indigo-200 bg-gradient-to-r from-indigo-50 to-purple-50">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Settings className="h-5 w-5" />
-              AI Feature Controls
+              Live AI Feature Controls
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               {[
-                { key: 'neuroAdapt', label: 'NeuroAdapt AI', icon: Brain, color: 'purple' },
-                { key: 'voiceCoach', label: 'Voice Coach', icon: Bot, color: 'green' },
-                { key: 'teleRehab', label: 'TeleRehab Monitor', icon: Video, color: 'blue' },
-                { key: 'emotionAnalysis', label: 'Emotion Analysis', icon: Heart, color: 'pink' }
-              ].map(({ key, label, icon: Icon, color }) => (
-                <Button
+                { key: 'neuroAdapt', label: 'NeuroAdapt AI', icon: Brain, color: 'purple', desc: 'Real-time adaptation' },
+                { key: 'voiceCoach', label: 'Voice Coach', icon: Bot, color: 'green', desc: 'Live voice feedback' },
+                { key: 'teleRehab', label: 'TeleRehab Monitor', icon: Video, color: 'blue', desc: 'Remote monitoring' },
+                { key: 'emotionAnalysis', label: 'Emotion Analysis', icon: Heart, color: 'pink', desc: 'Mood detection' }
+              ].map(({ key, label, icon: Icon, color, desc }) => (
+                <Card
                   key={key}
-                  variant={activeFeatures[key as keyof typeof activeFeatures] ? 'default' : 'outline'}
-                  onClick={() => handleFeatureToggle(key as keyof typeof activeFeatures)}
-                  className={`h-auto p-4 flex flex-col items-center gap-2 ${
+                  className={`cursor-pointer transition-all duration-300 hover:shadow-lg hover:scale-105 border-2 ${
                     activeFeatures[key as keyof typeof activeFeatures] 
-                      ? `bg-${color}-600 hover:bg-${color}-700` 
-                      : ''
+                      ? `border-${color}-300 bg-${color}-50` 
+                      : 'border-gray-200 bg-white hover:border-gray-300'
                   }`}
+                  onClick={() => handleFeatureToggle(key as keyof typeof activeFeatures)}
                 >
-                  <Icon className="h-6 w-6" />
-                  <span className="text-sm font-medium">{label}</span>
-                  <Badge variant={activeFeatures[key as keyof typeof activeFeatures] ? 'secondary' : 'outline'}>
-                    {activeFeatures[key as keyof typeof activeFeatures] ? 'Active' : 'Inactive'}
-                  </Badge>
-                </Button>
+                  <CardContent className="p-4 text-center">
+                    <Icon className={`h-8 w-8 mx-auto mb-2 ${
+                      activeFeatures[key as keyof typeof activeFeatures] 
+                        ? `text-${color}-600` 
+                        : 'text-gray-400'
+                    }`} />
+                    <h3 className="font-semibold text-sm mb-1">{label}</h3>
+                    <p className="text-xs text-gray-600 mb-2">{desc}</p>
+                    <Badge variant={activeFeatures[key as keyof typeof activeFeatures] ? 'default' : 'outline'}>
+                      {activeFeatures[key as keyof typeof activeFeatures] ? 'Active' : 'Inactive'}
+                    </Badge>
+                  </CardContent>
+                </Card>
               ))}
             </div>
+            
+            {/* Session Status */}
+            {isSessionActive && (
+              <div className="mt-4 p-4 bg-green-50 border border-green-200 rounded-lg">
+                <div className="flex items-center gap-2 text-green-800">
+                  <Activity className="h-5 w-5" />
+                  <span className="font-semibold">Live Session Active</span>
+                </div>
+                <p className="text-green-700 text-sm mt-1">
+                  {Object.values(activeFeatures).filter(Boolean).length} AI features are currently running and analyzing your movements in real-time.
+                </p>
+              </div>
+            )}
           </CardContent>
         </Card>
 
         {/* AI Features Tabs */}
         <Tabs defaultValue="neuroadapt" className="w-full">
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-4 mb-6">
             <TabsTrigger value="neuroadapt" className="flex items-center gap-2">
               <Brain className="h-4 w-4" />
               NeuroAdapt AI
@@ -265,19 +262,38 @@ const AIFeatures: React.FC = () => {
           <TabsContent value="neuroadapt" className="mt-6">
             {activeFeatures.neuroAdapt ? (
               <NeuroAdaptEngine
-                poseData={mockPoseData}
+                poseData={{
+                  landmarks: [],
+                  movements: {
+                    jointAngles: [],
+                    rangeOfMotion: {},
+                    movementQuality: 75,
+                    fatigueLevel: 3,
+                    painIndicators: [],
+                    balanceScore: 80,
+                    symmetryScore: 85
+                  },
+                  isCorrectForm: true,
+                  confidence: 0.85,
+                  feedback: 'Excellent form! Keep up the great work!',
+                  exercisePhase: 'execution' as const
+                }}
                 currentExercise="arm_raise"
-                onSettingsChange={handleAdaptiveSettingsChange}
+                onSettingsChange={(settings) => console.log('Settings changed:', settings)}
                 isActive={isSessionActive}
               />
             ) : (
-              <Card className="p-8 text-center">
-                <Brain className="h-12 w-12 mx-auto mb-4 text-gray-400" />
-                <h3 className="text-lg font-semibold mb-2">NeuroAdapt AI is Inactive</h3>
-                <p className="text-gray-600 mb-4">
-                  Enable NeuroAdapt AI to get real-time exercise adaptations based on your performance.
+              <Card className="p-8 text-center border-2 border-purple-200 bg-gradient-to-r from-purple-50 to-indigo-50">
+                <Brain className="h-16 w-16 mx-auto mb-4 text-purple-400" />
+                <h3 className="text-2xl font-semibold mb-4">NeuroAdapt AI Engine</h3>
+                <p className="text-gray-600 mb-6 max-w-md mx-auto">
+                  Intelligent real-time exercise adaptation based on your performance, fatigue levels, and movement quality.
                 </p>
-                <Button onClick={() => handleFeatureToggle('neuroAdapt')}>
+                <Button 
+                  onClick={() => handleFeatureToggle('neuroAdapt')}
+                  size="lg"
+                  className="bg-purple-600 hover:bg-purple-700"
+                >
                   Activate NeuroAdapt AI
                 </Button>
               </Card>
@@ -286,21 +302,19 @@ const AIFeatures: React.FC = () => {
 
           <TabsContent value="voicecoach" className="mt-6">
             {activeFeatures.voiceCoach ? (
-              <VoiceGuidedCoach
-                poseData={mockPoseData}
-                exercisePhase={mockPoseData.exercisePhase}
-                repCount={8}
-                isActive={isSessionActive}
-                onFeedbackGenerated={handleFeedbackGenerated}
-              />
+              <VoiceGuidedCoach isActive={isSessionActive} />
             ) : (
-              <Card className="p-8 text-center">
-                <Bot className="h-12 w-12 mx-auto mb-4 text-gray-400" />
-                <h3 className="text-lg font-semibold mb-2">Voice Coach is Inactive</h3>
-                <p className="text-gray-600 mb-4">
-                  Enable Voice Coach to receive real-time spoken feedback and encouragement.
+              <Card className="p-8 text-center border-2 border-green-200 bg-gradient-to-r from-green-50 to-teal-50">
+                <Bot className="h-16 w-16 mx-auto mb-4 text-green-400" />
+                <h3 className="text-2xl font-semibold mb-4">Live Voice AI Coach</h3>
+                <p className="text-gray-600 mb-6 max-w-md mx-auto">
+                  Real-time spoken feedback and encouragement based on your exercise performance and form analysis.
                 </p>
-                <Button onClick={() => handleFeatureToggle('voiceCoach')}>
+                <Button 
+                  onClick={() => handleFeatureToggle('voiceCoach')}
+                  size="lg"
+                  className="bg-green-600 hover:bg-green-700"
+                >
                   Activate Voice Coach
                 </Button>
               </Card>
@@ -309,25 +323,19 @@ const AIFeatures: React.FC = () => {
 
           <TabsContent value="telerehab" className="mt-6">
             {activeFeatures.teleRehab ? (
-              <TeleRehabMonitor
-                patientData={{
-                  name: user?.email?.split('@')[0] || 'Patient',
-                  id: user?.id || 'unknown',
-                  avatar: '/api/placeholder/48/48'
-                }}
-                poseData={mockPoseData}
-                isSessionActive={isSessionActive}
-                onSendMessage={handleSendMessage}
-                onSessionControl={handleSessionControl}
-              />
+              <TeleRehabMonitor isActive={isSessionActive} />
             ) : (
-              <Card className="p-8 text-center">
-                <Video className="h-12 w-12 mx-auto mb-4 text-gray-400" />
-                <h3 className="text-lg font-semibold mb-2">TeleRehab Monitor is Inactive</h3>
-                <p className="text-gray-600 mb-4">
-                  Enable TeleRehab Monitor to allow caregivers and therapists to join your session remotely.
+              <Card className="p-8 text-center border-2 border-blue-200 bg-gradient-to-r from-blue-50 to-cyan-50">
+                <Video className="h-16 w-16 mx-auto mb-4 text-blue-400" />
+                <h3 className="text-2xl font-semibold mb-4">Live TeleRehab Monitor</h3>
+                <p className="text-gray-600 mb-6 max-w-md mx-auto">
+                  Enable remote monitoring for caregivers and therapists to join your session with live pose overlay.
                 </p>
-                <Button onClick={() => handleFeatureToggle('teleRehab')}>
+                <Button 
+                  onClick={() => handleFeatureToggle('teleRehab')}
+                  size="lg"
+                  className="bg-blue-600 hover:bg-blue-700"
+                >
                   Activate TeleRehab Monitor
                 </Button>
               </Card>
@@ -336,35 +344,25 @@ const AIFeatures: React.FC = () => {
 
           <TabsContent value="emotion" className="mt-6">
             {activeFeatures.emotionAnalysis ? (
-              <EmotionAnalysis
-                videoRef={videoRef}
-                isActive={isSessionActive}
-                onContentSuggestion={handleContentSuggestion}
-                onExerciseModification={handleExerciseModification}
-              />
+              <EmotionAnalysis isActive={isSessionActive} />
             ) : (
-              <Card className="p-8 text-center">
-                <Heart className="h-12 w-12 mx-auto mb-4 text-gray-400" />
-                <h3 className="text-lg font-semibold mb-2">Emotion Analysis is Inactive</h3>
-                <p className="text-gray-600 mb-4">
-                  Enable Emotion Analysis to get personalized motivation and content suggestions based on your mood.
+              <Card className="p-8 text-center border-2 border-pink-200 bg-gradient-to-r from-pink-50 to-rose-50">
+                <Heart className="h-16 w-16 mx-auto mb-4 text-pink-400" />
+                <h3 className="text-2xl font-semibold mb-4">Live Emotion Analysis</h3>
+                <p className="text-gray-600 mb-6 max-w-md mx-auto">
+                  Real-time facial expression analysis for personalized motivation and content suggestions.
                 </p>
-                <Button onClick={() => handleFeatureToggle('emotionAnalysis')}>
+                <Button 
+                  onClick={() => handleFeatureToggle('emotionAnalysis')}
+                  size="lg"
+                  className="bg-pink-600 hover:bg-pink-700"
+                >
                   Activate Emotion Analysis
                 </Button>
               </Card>
             )}
           </TabsContent>
         </Tabs>
-
-        {/* Hidden video element for camera access */}
-        <video
-          ref={videoRef}
-          style={{ display: 'none' }}
-          autoPlay
-          playsInline
-          muted
-        />
       </div>
     </div>
   );

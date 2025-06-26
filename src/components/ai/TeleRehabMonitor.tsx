@@ -4,8 +4,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { WebcamPoseDetection } from '@/components/WebcamPoseDetection';
 import { 
   Video, 
   VideoOff, 
@@ -21,19 +21,12 @@ import {
   Camera,
   UserCheck,
   Clock,
-  Share2
+  Share2,
+  Monitor
 } from 'lucide-react';
 
 interface TeleRehabMonitorProps {
-  patientData: {
-    name: string;
-    id: string;
-    avatar?: string;
-  };
-  poseData: any;
-  isSessionActive: boolean;
-  onSendMessage: (message: string, type: 'text' | 'voice') => void;
-  onSessionControl: (action: 'start' | 'pause' | 'end') => void;
+  isActive: boolean;
 }
 
 interface MonitoringSession {
@@ -45,6 +38,7 @@ interface MonitoringSession {
     role: 'therapist' | 'caregiver' | 'doctor';
     avatar?: string;
     joinedAt: Date;
+    isActive: boolean;
   }>;
   messages: Array<{
     id: string;
@@ -56,18 +50,17 @@ interface MonitoringSession {
   }>;
 }
 
-export const TeleRehabMonitor: React.FC<TeleRehabMonitorProps> = ({
-  patientData,
-  poseData,
-  isSessionActive,
-  onSendMessage,
-  onSessionControl
-}) => {
+export const TeleRehabMonitor: React.FC<TeleRehabMonitorProps> = ({ isActive }) => {
   const [isVideoEnabled, setIsVideoEnabled] = useState(true);
   const [isAudioEnabled, setIsAudioEnabled] = useState(true);
   const [isShareEnabled, setIsShareEnabled] = useState(false);
   const [newMessage, setNewMessage] = useState('');
-  const [selectedViewer, setSelectedViewer] = useState<string | null>(null);
+  const [repCount, setRepCount] = useState(0);
+  const [sessionStats, setSessionStats] = useState({
+    accuracy: 0,
+    totalReps: 0,
+    sessionDuration: 0
+  });
   
   const [monitoringSession, setMonitoringSession] = useState<MonitoringSession>({
     id: 'session_' + Date.now(),
@@ -78,13 +71,15 @@ export const TeleRehabMonitor: React.FC<TeleRehabMonitorProps> = ({
         name: 'Dr. Sarah Johnson',
         role: 'therapist',
         avatar: '/api/placeholder/32/32',
-        joinedAt: new Date()
+        joinedAt: new Date(),
+        isActive: true
       },
       {
         id: 'caregiver_1',
         name: 'Mary (Caregiver)',
         role: 'caregiver',
-        joinedAt: new Date(Date.now() - 300000)
+        joinedAt: new Date(Date.now() - 300000),
+        isActive: true
       }
     ],
     messages: [
@@ -92,7 +87,7 @@ export const TeleRehabMonitor: React.FC<TeleRehabMonitorProps> = ({
         id: 'msg_1',
         senderId: 'system',
         senderName: 'System',
-        content: 'Monitoring session started',
+        content: 'Remote monitoring session started',
         type: 'system',
         timestamp: new Date()
       }
@@ -101,16 +96,13 @@ export const TeleRehabMonitor: React.FC<TeleRehabMonitorProps> = ({
 
   const [liveMetrics, setLiveMetrics] = useState({
     heartRate: 72,
-    breathingRate: 16,
     stressLevel: 2,
     fatigueLevel: 3,
-    painLevel: 1,
     attention: 85,
     engagement: 90
   });
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const videoRef = useRef<HTMLVideoElement>(null);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -118,21 +110,30 @@ export const TeleRehabMonitor: React.FC<TeleRehabMonitorProps> = ({
 
   // Simulate live metrics updates
   useEffect(() => {
-    if (isSessionActive) {
+    if (isActive) {
       const interval = setInterval(() => {
         setLiveMetrics(prev => ({
           heartRate: Math.max(60, Math.min(120, prev.heartRate + (Math.random() - 0.5) * 4)),
-          breathingRate: Math.max(12, Math.min(24, prev.breathingRate + (Math.random() - 0.5) * 2)),
           stressLevel: Math.max(0, Math.min(5, prev.stressLevel + (Math.random() - 0.5) * 0.5)),
-          fatigueLevel: poseData?.movements?.fatigueLevel || prev.fatigueLevel,
-          painLevel: Math.max(0, Math.min(5, prev.painLevel + (Math.random() - 0.5) * 0.3)),
+          fatigueLevel: Math.max(0, Math.min(10, prev.fatigueLevel + (Math.random() - 0.5) * 0.8)),
           attention: Math.max(50, Math.min(100, prev.attention + (Math.random() - 0.5) * 5)),
           engagement: Math.max(60, Math.min(100, prev.engagement + (Math.random() - 0.5) * 3))
         }));
       }, 2000);
       return () => clearInterval(interval);
     }
-  }, [isSessionActive, poseData]);
+  }, [isActive]);
+
+  // Update session duration
+  useEffect(() => {
+    if (isActive) {
+      const interval = setInterval(() => {
+        const duration = Math.floor((Date.now() - monitoringSession.startTime.getTime()) / 1000);
+        setSessionStats(prev => ({ ...prev, sessionDuration: duration }));
+      }, 1000);
+      return () => clearInterval(interval);
+    }
+  }, [isActive, monitoringSession.startTime]);
 
   const sendMessage = () => {
     if (!newMessage.trim()) return;
@@ -140,7 +141,7 @@ export const TeleRehabMonitor: React.FC<TeleRehabMonitorProps> = ({
     const message = {
       id: 'msg_' + Date.now(),
       senderId: 'current_user',
-      senderName: 'You',
+      senderName: 'Patient',
       content: newMessage,
       type: 'text' as const,
       timestamp: new Date()
@@ -151,15 +152,47 @@ export const TeleRehabMonitor: React.FC<TeleRehabMonitorProps> = ({
       messages: [...prev.messages, message]
     }));
 
-    onSendMessage(newMessage, 'text');
     setNewMessage('');
+
+    // Simulate therapist response
+    setTimeout(() => {
+      const response = {
+        id: 'msg_' + (Date.now() + 1),
+        senderId: 'therapist_1',
+        senderName: 'Dr. Sarah Johnson',
+        content: getTherapistResponse(newMessage),
+        type: 'text' as const,
+        timestamp: new Date()
+      };
+
+      setMonitoringSession(prev => ({
+        ...prev,
+        messages: [...prev.messages, response]
+      }));
+    }, 1000 + Math.random() * 2000);
+  };
+
+  const getTherapistResponse = (message: string): string => {
+    const lowerMessage = message.toLowerCase();
+    
+    if (lowerMessage.includes('tired') || lowerMessage.includes('fatigue')) {
+      return "I can see you're working hard. Take a 30-second break and then continue with slower movements.";
+    } else if (lowerMessage.includes('pain') || lowerMessage.includes('hurt')) {
+      return "Please stop the exercise immediately. Let's assess the pain level and modify the routine.";
+    } else if (lowerMessage.includes('good') || lowerMessage.includes('great')) {
+      return "Excellent work! Your form is looking much better. Keep up the great progress!";
+    } else if (lowerMessage.includes('difficult') || lowerMessage.includes('hard')) {
+      return "It's normal for it to feel challenging. You're building strength! Would you like me to suggest an easier variation?";
+    } else {
+      return "I'm monitoring your progress closely. You're doing wonderfully! Keep focusing on controlled movements.";
+    }
   };
 
   const sendQuickMessage = (message: string) => {
     const quickMessage = {
       id: 'msg_' + Date.now(),
       senderId: 'current_user',
-      senderName: 'You',
+      senderName: 'Patient',
       content: message,
       type: 'text' as const,
       timestamp: new Date()
@@ -169,8 +202,34 @@ export const TeleRehabMonitor: React.FC<TeleRehabMonitorProps> = ({
       ...prev,
       messages: [...prev.messages, quickMessage]
     }));
+  };
 
-    onSendMessage(message, 'text');
+  const handleRepCompleted = (repData: { accuracy: number; feedback: string }) => {
+    const newRepCount = repCount + 1;
+    setRepCount(newRepCount);
+    
+    setSessionStats(prev => ({
+      ...prev,
+      totalReps: newRepCount,
+      accuracy: ((prev.accuracy * (newRepCount - 1)) + (repData.accuracy * 100)) / newRepCount
+    }));
+
+    // Notify viewers of progress
+    if (newRepCount % 5 === 0) {
+      const progressMessage = {
+        id: 'msg_' + Date.now(),
+        senderId: 'system',
+        senderName: 'System',
+        content: `Milestone reached: ${newRepCount} reps completed with ${Math.round(repData.accuracy * 100)}% accuracy`,
+        type: 'system' as const,
+        timestamp: new Date()
+      };
+
+      setMonitoringSession(prev => ({
+        ...prev,
+        messages: [...prev.messages, progressMessage]
+      }));
+    }
   };
 
   const getMetricColor = (value: number, type: string) => {
@@ -179,8 +238,7 @@ export const TeleRehabMonitor: React.FC<TeleRehabMonitorProps> = ({
         return value > 100 ? 'text-red-600' : value > 85 ? 'text-orange-600' : 'text-green-600';
       case 'stress':
       case 'fatigue':
-      case 'pain':
-        return value > 3 ? 'text-red-600' : value > 2 ? 'text-orange-600' : 'text-green-600';
+        return value > 6 ? 'text-red-600' : value > 4 ? 'text-orange-600' : 'text-green-600';
       default:
         return value > 80 ? 'text-green-600' : value > 60 ? 'text-orange-600' : 'text-red-600';
     }
@@ -195,6 +253,12 @@ export const TeleRehabMonitor: React.FC<TeleRehabMonitorProps> = ({
     }
   };
 
+  const formatTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+
   return (
     <div className="space-y-6">
       {/* Main Monitoring Interface */}
@@ -202,38 +266,43 @@ export const TeleRehabMonitor: React.FC<TeleRehabMonitorProps> = ({
         <CardHeader>
           <CardTitle className="flex items-center gap-3">
             <div className="p-2 bg-blue-600 rounded-lg">
-              <Video className="h-6 w-6 text-white" />
+              <Monitor className="h-6 w-6 text-white" />
             </div>
             <div>
-              <span className="text-xl font-bold">TeleRehab Live Monitor</span>
+              <span className="text-xl font-bold">Live TeleRehab Monitor</span>
               <div className="flex items-center gap-2 mt-1">
-                <Badge variant={isSessionActive ? 'default' : 'secondary'}>
-                  {isSessionActive ? 'Live Session' : 'Session Ended'}
+                <Badge variant={isActive ? 'default' : 'secondary'}>
+                  {isActive ? 'Live Session' : 'Session Paused'}
                 </Badge>
                 <Badge variant="outline">
-                  {monitoringSession.viewers.length} Viewers
+                  {monitoringSession.viewers.filter(v => v.isActive).length} Active Viewers
+                </Badge>
+                <Badge variant="outline">
+                  Duration: {formatTime(sessionStats.sessionDuration)}
                 </Badge>
               </div>
             </div>
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-6">
-          {/* Patient Info & Session Controls */}
+          {/* Session Controls */}
           <div className="flex justify-between items-center p-4 bg-white rounded-lg border">
-            <div className="flex items-center gap-3">
-              <Avatar className="h-12 w-12">
-                <AvatarImage src={patientData.avatar} />
-                <AvatarFallback>{patientData.name.charAt(0)}</AvatarFallback>
-              </Avatar>
-              <div>
-                <h3 className="font-semibold">{patientData.name}</h3>
-                <p className="text-sm text-gray-600">Patient ID: {patientData.id}</p>
-                <div className="flex items-center gap-2 mt-1">
-                  <Clock className="h-3 w-3" />
-                  <span className="text-xs text-gray-500">
-                    Session: {Math.floor((Date.now() - monitoringSession.startTime.getTime()) / 60000)} min
-                  </span>
+            <div className="flex items-center gap-4">
+              <div className="text-center">
+                <div className="text-2xl font-bold text-blue-600">{repCount}</div>
+                <div className="text-xs text-gray-600">Reps</div>
+              </div>
+              <div className="text-center">
+                <div className="text-2xl font-bold text-green-600">
+                  {Math.round(sessionStats.accuracy)}%
                 </div>
+                <div className="text-xs text-gray-600">Avg Accuracy</div>
+              </div>
+              <div className="text-center">
+                <div className="text-2xl font-bold text-purple-600">
+                  {formatTime(sessionStats.sessionDuration)}
+                </div>
+                <div className="text-xs text-gray-600">Duration</div>
               </div>
             </div>
 
@@ -263,10 +332,11 @@ export const TeleRehabMonitor: React.FC<TeleRehabMonitorProps> = ({
           </div>
 
           {/* Live Metrics Dashboard */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
             {[
               { key: 'heartRate', label: 'Heart Rate', value: liveMetrics.heartRate, unit: 'bpm', icon: Heart },
               { key: 'fatigueLevel', label: 'Fatigue', value: liveMetrics.fatigueLevel, unit: '/10', icon: Activity },
+              { key: 'stressLevel', label: 'Stress', value: liveMetrics.stressLevel, unit: '/5', icon: AlertCircle },
               { key: 'attention', label: 'Attention', value: liveMetrics.attention, unit: '%', icon: Eye },
               { key: 'engagement', label: 'Engagement', value: liveMetrics.engagement, unit: '%', icon: UserCheck }
             ].map(({ key, label, value, unit, icon: Icon }) => (
@@ -288,22 +358,39 @@ export const TeleRehabMonitor: React.FC<TeleRehabMonitorProps> = ({
                 <span className="font-semibold">Attention Required</span>
               </div>
               <p className="text-red-700 text-sm mt-1">
-                {liveMetrics.fatigueLevel > 7 && 'High fatigue detected - consider rest break. '}
-                {liveMetrics.stressLevel > 3 && 'Elevated stress levels observed.'}
+                {liveMetrics.fatigueLevel > 7 && 'High fatigue detected - recommend rest break. '}
+                {liveMetrics.stressLevel > 3 && 'Elevated stress levels observed - consider session adjustment.'}
               </p>
             </div>
           )}
         </CardContent>
       </Card>
 
-      {/* Viewers & Communication Panel */}
+      {/* Live Exercise Feed */}
+      <Card className="border-2 border-green-200">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Camera className="h-5 w-5" />
+            Live Exercise Feed
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <WebcamPoseDetection
+            exerciseTitle="Monitored Rehabilitation Session"
+            onRepCompleted={handleRepCompleted}
+            isActive={isActive}
+          />
+        </CardContent>
+      </Card>
+
+      {/* Communication Panel */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Active Viewers */}
         <Card>
           <CardHeader>
             <CardTitle className="text-lg flex items-center gap-2">
               <Users className="h-5 w-5" />
-              Active Viewers ({monitoringSession.viewers.length})
+              Remote Viewers ({monitoringSession.viewers.filter(v => v.isActive).length})
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -316,7 +403,10 @@ export const TeleRehabMonitor: React.FC<TeleRehabMonitorProps> = ({
                       <AvatarFallback>{viewer.name.charAt(0)}</AvatarFallback>
                     </Avatar>
                     <div>
-                      <div className="font-medium text-sm">{viewer.name}</div>
+                      <div className="font-medium text-sm flex items-center gap-2">
+                        {viewer.name}
+                        {viewer.isActive && <div className="w-2 h-2 bg-green-500 rounded-full"></div>}
+                      </div>
                       <Badge variant="outline" className={`text-xs ${getRoleColor(viewer.role)}`}>
                         {viewer.role}
                       </Badge>
@@ -343,7 +433,7 @@ export const TeleRehabMonitor: React.FC<TeleRehabMonitorProps> = ({
             {/* Messages */}
             <div className="bg-gray-50 rounded-lg p-3 h-48 overflow-y-auto">
               <div className="space-y-3">
-                {monitoringSession.messages.map((message) => (
+                {monitoringSession.messages.slice(-10).map((message) => (
                   <div key={message.id} className={`text-sm ${
                     message.type === 'system' ? 'text-center text-gray-500 italic' : ''
                   }`}>
@@ -367,8 +457,8 @@ export const TeleRehabMonitor: React.FC<TeleRehabMonitorProps> = ({
             {/* Quick Messages */}
             <div className="flex flex-wrap gap-2">
               {[
-                '👍 Great job!',
-                '⚠️ Take a break',
+                '👍 Doing great!',
+                '⚠️ Need a break',
                 '💪 Keep going!',
                 '🔄 Adjust form'
               ].map((msg) => (
@@ -389,7 +479,7 @@ export const TeleRehabMonitor: React.FC<TeleRehabMonitorProps> = ({
               <Input
                 value={newMessage}
                 onChange={(e) => setNewMessage(e.target.value)}
-                placeholder="Send encouragement or instructions..."
+                placeholder="Send message to therapist..."
                 onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
                 className="text-sm"
               />
@@ -400,53 +490,6 @@ export const TeleRehabMonitor: React.FC<TeleRehabMonitorProps> = ({
           </CardContent>
         </Card>
       </div>
-
-      {/* Session Analytics */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg">Session Analytics</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-2 lg:grid-cols-6 gap-4 text-center">
-            <div>
-              <div className="text-2xl font-bold text-blue-600">
-                {Math.floor((Date.now() - monitoringSession.startTime.getTime()) / 60000)}
-              </div>
-              <div className="text-xs text-gray-600">Minutes Active</div>
-            </div>
-            <div>
-              <div className="text-2xl font-bold text-green-600">
-                {Math.round(poseData?.confidence * 100 || 0)}%
-              </div>
-              <div className="text-xs text-gray-600">Avg Accuracy</div>
-            </div>
-            <div>
-              <div className="text-2xl font-bold text-purple-600">
-                {monitoringSession.messages.filter(m => m.type !== 'system').length}
-              </div>
-              <div className="text-xs text-gray-600">Messages</div>
-            </div>
-            <div>
-              <div className="text-2xl font-bold text-orange-600">
-                {Math.round(liveMetrics.engagement)}%
-              </div>
-              <div className="text-xs text-gray-600">Engagement</div>
-            </div>
-            <div>
-              <div className="text-2xl font-bold text-red-600">
-                {liveMetrics.fatigueLevel}
-              </div>
-              <div className="text-xs text-gray-600">Peak Fatigue</div>
-            </div>
-            <div>
-              <div className="text-2xl font-bold text-cyan-600">
-                {monitoringSession.viewers.length}
-              </div>
-              <div className="text-xs text-gray-600">Peak Viewers</div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
     </div>
   );
 };
