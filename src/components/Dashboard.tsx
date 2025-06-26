@@ -20,7 +20,8 @@ import {
   Settings,
   LogOut,
   Zap,
-  Award
+  Award,
+  Sparkles
 } from 'lucide-react';
 
 const Dashboard: React.FC = () => {
